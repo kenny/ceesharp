@@ -67,6 +67,7 @@ void WriteTrivia(ImmutableArray<SyntaxTrivia> trivia)
     foreach (var triviaNode in trivia)
         switch (triviaNode.Kind)
         {
+            case TriviaKind.EndOfLine:
             case TriviaKind.Whitespace:
                 Console.Write(triviaNode.Text);
                 break;
