@@ -7,7 +7,21 @@ public class SyntaxToken(TokenKind kind, string text, int position, object? valu
     public TokenKind Kind { get; } = kind;
     public string Text { get; } = text;
     public object? Value { get; } = value;
+    public int Width => Text.Length;
+    public int FullWidth => CalculateFullWidth();
     public int Position { get; } = position;
-    public ImmutableArray<SyntaxTrivia> LeadingTrivia { get; set; } = [];
-    public ImmutableArray<SyntaxTrivia> TrailingTrivia { get; set; } = [];
+    public int EndTextPosition => Position + Width;
+    public int EndPosition => Position + FullWidth;
+    public ImmutableArray<SyntaxTrivia> LeadingTrivia { get; set; } = ImmutableArray<SyntaxTrivia>.Empty;
+    public ImmutableArray<SyntaxTrivia> TrailingTrivia { get; set; } = ImmutableArray<SyntaxTrivia>.Empty;
+    
+    private int CalculateFullWidth()
+    {
+        if (TrailingTrivia.Length == 0)
+            return 0;
+        
+        var trailingTrivia = TrailingTrivia.Last();
+
+        return Width + trailingTrivia.EndPosition - EndTextPosition;
+    }
 }
