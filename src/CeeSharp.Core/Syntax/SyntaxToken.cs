@@ -14,14 +14,19 @@ public class SyntaxToken(TokenKind kind, string text, int position, object? valu
     public int EndPosition => Position + FullWidth;
     public ImmutableArray<SyntaxTrivia> LeadingTrivia { get; set; } = ImmutableArray<SyntaxTrivia>.Empty;
     public ImmutableArray<SyntaxTrivia> TrailingTrivia { get; set; } = ImmutableArray<SyntaxTrivia>.Empty;
-    
+
     private int CalculateFullWidth()
     {
-        if (TrailingTrivia.Length == 0)
-            return 0;
+        SyntaxTrivia? lineTrail = null;
         
-        var trailingTrivia = TrailingTrivia.Last();
+        foreach(var trivia in TrailingTrivia)
+            if (trivia.Kind != TriviaKind.EndOfLine)
+                lineTrail = trivia;
+            else break;
 
-        return Width + trailingTrivia.EndPosition - EndTextPosition;
+        if (lineTrail == null)
+            return Width;
+        
+        return Width + lineTrail.EndPosition - EndTextPosition;
     }
 }

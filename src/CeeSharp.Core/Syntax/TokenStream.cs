@@ -10,6 +10,10 @@ public class TokenStream(ImmutableArray<SyntaxToken> tokens)
         ? tokens[position]
         : new SyntaxToken(TokenKind.EndOfFile, "", tokens.Any() ? tokens[^1].Position + 1 : 0);
 
+    public SyntaxToken Previous => position > 0
+        ? tokens[position - 1]
+        : new SyntaxToken(TokenKind.Unknown, "", 0);
+
     public ReadOnlySpan<SyntaxToken> Tokens => tokens.AsSpan();
 
     public void Advance()
