@@ -5,4 +5,14 @@ namespace CeeSharp.Core.Syntax.Nodes;
 
 public record CompilationUnitNode(
     ImmutableArray<UsingDirectiveNode> Usings,
-    ImmutableArray<DeclarationNode> Declarations) : SyntaxNode;
+    ImmutableArray<DeclarationNode> Declarations) : SyntaxNode
+{
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Usings)
+            yield return child;
+        
+        foreach (var child in Declarations)
+            yield return child;
+    }
+}
