@@ -241,6 +241,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
 
             case '\'':
                 return ScanCharacterLiteral();
+            case '@':
             case '"':
                 return ScanStringLiteral();
             default:
@@ -301,24 +302,48 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
     private SyntaxToken ScanStringLiteral()
     {
         var start = position;
-
-        Advance(); // Skip "
+        var isVerbatim = false;
 
         literalBuilder.Clear();
+        
+        if (Current == '@')
+        {
+            isVerbatim = true;
+            Advance(); // Skip @
+        }
+        
+        Advance(); // Skip "
 
-        while (Current is not '"' and not '\0')
+        while (Current is not '\0')
         {
             var current = Current;
 
-            if (current == '\\')
-                ScanEscapeCharacter();
+            if (!isVerbatim)
+            {
+                if (current is '\r' or '\n')
+                {
+                    diagnostics.ReportError(start, "Newline in constant");
+                    break;
+                }
+
+                if (current == '\\')
+                    ScanEscapeCharacter();
+            }
+            else if (isVerbatim && current == '"' && Peek(1) == '"')
+            {
+                literalBuilder.Append('"');
+                
+                Advance(); // Skip "
+            }
+            else if (current == '"')
+                break;
             else
                 literalBuilder.Append(current);
 
             Advance();
         }
 
-        if (Current == '"')
+        if (Current is '"' or '\r' or '\n')
             Advance(); // Skip "
         else
             diagnostics.ReportError(start, "Unterminated string literal");
