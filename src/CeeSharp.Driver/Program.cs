@@ -7,7 +7,7 @@ using CeeSharp.Core.Text;
 const string code = """
                     public class Program {
                         public static void Main() {
-                        Console.WriteLine("Hello, world!");
+                            System.Console.WriteLine("Hello, world!");
                         }
                     }
                     """;
