@@ -241,7 +241,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
 
             case '\'':
                 return ScanCharacterLiteral();
-            case '@':
+            case '@' when Lookahead == '"':
             case '"':
                 return ScanStringLiteral();
             default:
