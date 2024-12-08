@@ -121,12 +121,12 @@ public enum TokenKind
     RightShiftAssign, // >>=
 
     // Symbols
-    LeftBrace, // {
-    RightBrace, // }
-    LeftBracket, // [
-    RightBracket, // ]
-    LeftParen, // (
-    RightParen, // )
+    OpenBrace, // {
+    CloseBrace, // }
+    OpenBracket, // [
+    CloseBracket, // ]
+    OpenParen, // (
+    CloseParen, // )
     Dot, // .
     Comma, // ,
     Colon, // :

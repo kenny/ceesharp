@@ -80,24 +80,24 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
 
             case '{':
                 Advance();
-                return new SyntaxToken(TokenKind.LeftBrace, "{", start);
+                return new SyntaxToken(TokenKind.OpenBrace, "{", start);
             case '}':
                 Advance();
-                return new SyntaxToken(TokenKind.RightBrace, "}", start);
+                return new SyntaxToken(TokenKind.CloseBrace, "}", start);
 
             case '(':
                 Advance();
-                return new SyntaxToken(TokenKind.LeftParen, "(", start);
+                return new SyntaxToken(TokenKind.OpenParen, "(", start);
             case ')':
                 Advance();
-                return new SyntaxToken(TokenKind.RightParen, ")", start);
+                return new SyntaxToken(TokenKind.CloseParen, ")", start);
 
             case '[':
                 Advance();
-                return new SyntaxToken(TokenKind.LeftBracket, "[", start);
+                return new SyntaxToken(TokenKind.OpenBracket, "[", start);
             case ']':
                 Advance();
-                return new SyntaxToken(TokenKind.RightBracket, "]", start);
+                return new SyntaxToken(TokenKind.CloseBracket, "]", start);
 
             case ';':
                 Advance();
@@ -258,7 +258,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
     private SyntaxToken ScanCharacterLiteral()
     {
         var start = position;
-        
+
         Advance(); // Skip '
 
         literalBuilder.Clear();
@@ -305,13 +305,13 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
         var isVerbatim = false;
 
         literalBuilder.Clear();
-        
+
         if (Current == '@')
         {
             isVerbatim = true;
             Advance(); // Skip @
         }
-        
+
         Advance(); // Skip "
 
         while (Current is not '\0')
@@ -332,15 +332,15 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
             else if (isVerbatim && current == '"' && Peek(1) == '"')
             {
                 literalBuilder.Append('"');
-                
+
                 Advance(); // Skip "
-                
+
                 continue;
             }
-            
+
             if (current == '"')
                 break;
-            
+
             literalBuilder.Append(Current);
 
             Advance();
@@ -478,13 +478,13 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
         var start = position;
         var isInvalid = false;
         var isHex = false;
-        
+
         if (Current == '0' && Lookahead is 'x' or 'X')
         {
             Advance(2); // Skip 0x
 
             isHex = true;
-            
+
             if (!IsHexDigit(Current))
                 isInvalid = true;
             else
@@ -563,7 +563,9 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
         var numberStyle = isHex ? NumberStyles.AllowHexSpecifier : NumberStyles.None;
 
         if (isHex)
+        {
             text = text[2..];
+        }
         else
         {
             if (upperText.EndsWith("UL") || upperText.EndsWith("LU"))
@@ -579,10 +581,9 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 return double.Parse(text[..^1]);
             if (upperText.EndsWith('M'))
                 return decimal.Parse(text[..^1]);
-            
+
             if (text.Contains('.') || text.Contains('e') || text.Contains('E'))
                 return double.Parse(text);
-
         }
 
         if (int.TryParse(text, numberStyle, null, out var intValue))
