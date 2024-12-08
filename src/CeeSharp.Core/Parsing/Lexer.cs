@@ -173,7 +173,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 return new SyntaxToken(TokenKind.DivideAssign, "/=", start);
             case '/':
                 Advance();
-                return new SyntaxToken(TokenKind.Divide, "*", start);
+                return new SyntaxToken(TokenKind.Divide, "/", start);
 
             case '%' when Lookahead == '=':
                 position += 2;
