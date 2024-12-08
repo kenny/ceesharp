@@ -334,11 +334,13 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 literalBuilder.Append('"');
                 
                 Advance(); // Skip "
+                
+                continue;
             }
             else if (current == '"')
                 break;
-            else
-                literalBuilder.Append(current);
+            
+            literalBuilder.Append(current);
 
             Advance();
         }
