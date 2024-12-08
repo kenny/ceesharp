@@ -226,7 +226,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 return new SyntaxToken(TokenKind.OrAssign, "|=", start);
             case '|':
                 Advance();
-                return new SyntaxToken(TokenKind.Pipe, "&", start);
+                return new SyntaxToken(TokenKind.Pipe, "|", start);
 
             case '^' when Lookahead == '=':
                 position += 2;
