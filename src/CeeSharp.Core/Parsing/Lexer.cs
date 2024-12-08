@@ -560,27 +560,30 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
     {
         var upperText = text.ToUpperInvariant();
 
-        if (isHex)
-            text = text[2..];
-
         var numberStyle = isHex ? NumberStyles.AllowHexSpecifier : NumberStyles.None;
 
-        if (upperText.EndsWith("UL") || upperText.EndsWith("LU"))
-            return ulong.Parse(text[..^2]);
-        if (upperText.EndsWith('U'))
-            return uint.Parse(text[..^1]);
-        if (upperText.EndsWith('L'))
-            return long.Parse(text[..^1]);
+        if (isHex)
+            text = text[2..];
+        else
+        {
+            if (upperText.EndsWith("UL") || upperText.EndsWith("LU"))
+                return ulong.Parse(text[..^2]);
+            if (upperText.EndsWith('U'))
+                return uint.Parse(text[..^1]);
+            if (upperText.EndsWith('L'))
+                return long.Parse(text[..^1]);
 
-        if (upperText.EndsWith('F'))
-            return float.Parse(text[..^1]);
-        if (upperText.EndsWith('D'))
-            return double.Parse(text[..^1]);
-        if (upperText.EndsWith('M'))
-            return decimal.Parse(text[..^1]);
+            if (upperText.EndsWith('F'))
+                return float.Parse(text[..^1]);
+            if (upperText.EndsWith('D'))
+                return double.Parse(text[..^1]);
+            if (upperText.EndsWith('M'))
+                return decimal.Parse(text[..^1]);
+            
+            if (text.Contains('.') || text.Contains('e') || text.Contains('E'))
+                return double.Parse(text);
 
-        if (text.Contains('.') || text.Contains('e') || text.Contains('E'))
-            return double.Parse(text);
+        }
 
         if (int.TryParse(text, numberStyle, null, out var intValue))
             return intValue;
