@@ -245,7 +245,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
             case '"':
                 return ScanStringLiteral();
             default:
-                if (char.IsLetter(current) || current == '_')
+                if (char.IsLetter(current) || current is '_' or '@')
                     return ScanIdentifierOrKeyword();
                 if (char.IsDigit(current))
                     return ScanNumberLiteral();
@@ -593,92 +593,105 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
     private SyntaxToken ScanIdentifierOrKeyword()
     {
         var start = position;
+        var isVerbatim = false;
+
+        if (Current == '@')
+        {
+            isVerbatim = true;
+
+            Advance(); // Skip @
+        }
+
         while (char.IsLetterOrDigit(Current) || Current == '_')
             Advance();
 
         var length = position - start;
         var text = sourceText.GetText(start, length);
 
-        var kind = text switch
+        var kind = isVerbatim switch
         {
-            "abstract" => TokenKind.Abstract,
-            "as" => TokenKind.As,
-            "base" => TokenKind.Base,
-            "bool" => TokenKind.Bool,
-            "break" => TokenKind.Break,
-            "byte" => TokenKind.Byte,
-            "case" => TokenKind.Case,
-            "catch" => TokenKind.Catch,
-            "char" => TokenKind.Char,
-            "checked" => TokenKind.Checked,
-            "class" => TokenKind.Class,
-            "const" => TokenKind.Const,
-            "continue" => TokenKind.Continue,
-            "decimal" => TokenKind.Decimal,
-            "default" => TokenKind.Default,
-            "delegate" => TokenKind.Delegate,
-            "do" => TokenKind.Do,
-            "double" => TokenKind.Double,
-            "else" => TokenKind.Else,
-            "enum" => TokenKind.Enum,
-            "event" => TokenKind.Event,
-            "explicit" => TokenKind.Explicit,
-            "extern" => TokenKind.Extern,
-            "false" => TokenKind.False,
-            "finally" => TokenKind.Finally,
-            "fixed" => TokenKind.Fixed,
-            "float" => TokenKind.Float,
-            "for" => TokenKind.For,
-            "foreach" => TokenKind.Foreach,
-            "goto" => TokenKind.Goto,
-            "if" => TokenKind.If,
-            "implicit" => TokenKind.Implicit,
-            "in" => TokenKind.In,
-            "int" => TokenKind.Int,
-            "interface" => TokenKind.Interface,
-            "internal" => TokenKind.Internal,
-            "is" => TokenKind.Is,
-            "lock" => TokenKind.Lock,
-            "long" => TokenKind.Long,
-            "namespace" => TokenKind.Namespace,
-            "new" => TokenKind.New,
-            "null" => TokenKind.Null,
-            "object" => TokenKind.Object,
-            "operator" => TokenKind.Operator,
-            "out" => TokenKind.Out,
-            "override" => TokenKind.Override,
-            "params" => TokenKind.Params,
-            "private" => TokenKind.Private,
-            "protected" => TokenKind.Protected,
-            "public" => TokenKind.Public,
-            "readonly" => TokenKind.Readonly,
-            "ref" => TokenKind.Ref,
-            "return" => TokenKind.Return,
-            "sbyte" => TokenKind.Sbyte,
-            "sealed" => TokenKind.Sealed,
-            "short" => TokenKind.Short,
-            "sizeof" => TokenKind.Sizeof,
-            "stackalloc" => TokenKind.Stackalloc,
-            "static" => TokenKind.Static,
-            "string" => TokenKind.String,
-            "struct" => TokenKind.Struct,
-            "switch" => TokenKind.Switch,
-            "this" => TokenKind.This,
-            "throw" => TokenKind.Throw,
-            "true" => TokenKind.True,
-            "try" => TokenKind.Try,
-            "typeof" => TokenKind.Typeof,
-            "uint" => TokenKind.Uint,
-            "ulong" => TokenKind.Ulong,
-            "unchecked" => TokenKind.Unchecked,
-            "unsafe" => TokenKind.Unsafe,
-            "ushort" => TokenKind.Ushort,
-            "using" => TokenKind.Using,
-            "virtual" => TokenKind.Virtual,
-            "void" => TokenKind.Void,
-            "volatile" => TokenKind.Volatile,
-            "while" => TokenKind.While,
-            _ => TokenKind.Identifier
+            true => TokenKind.Identifier,
+            false => text switch
+            {
+                "abstract" => TokenKind.Abstract,
+                "as" => TokenKind.As,
+                "base" => TokenKind.Base,
+                "bool" => TokenKind.Bool,
+                "break" => TokenKind.Break,
+                "byte" => TokenKind.Byte,
+                "case" => TokenKind.Case,
+                "catch" => TokenKind.Catch,
+                "char" => TokenKind.Char,
+                "checked" => TokenKind.Checked,
+                "class" => TokenKind.Class,
+                "const" => TokenKind.Const,
+                "continue" => TokenKind.Continue,
+                "decimal" => TokenKind.Decimal,
+                "default" => TokenKind.Default,
+                "delegate" => TokenKind.Delegate,
+                "do" => TokenKind.Do,
+                "double" => TokenKind.Double,
+                "else" => TokenKind.Else,
+                "enum" => TokenKind.Enum,
+                "event" => TokenKind.Event,
+                "explicit" => TokenKind.Explicit,
+                "extern" => TokenKind.Extern,
+                "false" => TokenKind.False,
+                "finally" => TokenKind.Finally,
+                "fixed" => TokenKind.Fixed,
+                "float" => TokenKind.Float,
+                "for" => TokenKind.For,
+                "foreach" => TokenKind.Foreach,
+                "goto" => TokenKind.Goto,
+                "if" => TokenKind.If,
+                "implicit" => TokenKind.Implicit,
+                "in" => TokenKind.In,
+                "int" => TokenKind.Int,
+                "interface" => TokenKind.Interface,
+                "internal" => TokenKind.Internal,
+                "is" => TokenKind.Is,
+                "lock" => TokenKind.Lock,
+                "long" => TokenKind.Long,
+                "namespace" => TokenKind.Namespace,
+                "new" => TokenKind.New,
+                "null" => TokenKind.Null,
+                "object" => TokenKind.Object,
+                "operator" => TokenKind.Operator,
+                "out" => TokenKind.Out,
+                "override" => TokenKind.Override,
+                "params" => TokenKind.Params,
+                "private" => TokenKind.Private,
+                "protected" => TokenKind.Protected,
+                "public" => TokenKind.Public,
+                "readonly" => TokenKind.Readonly,
+                "ref" => TokenKind.Ref,
+                "return" => TokenKind.Return,
+                "sbyte" => TokenKind.Sbyte,
+                "sealed" => TokenKind.Sealed,
+                "short" => TokenKind.Short,
+                "sizeof" => TokenKind.Sizeof,
+                "stackalloc" => TokenKind.Stackalloc,
+                "static" => TokenKind.Static,
+                "string" => TokenKind.String,
+                "struct" => TokenKind.Struct,
+                "switch" => TokenKind.Switch,
+                "this" => TokenKind.This,
+                "throw" => TokenKind.Throw,
+                "true" => TokenKind.True,
+                "try" => TokenKind.Try,
+                "typeof" => TokenKind.Typeof,
+                "uint" => TokenKind.Uint,
+                "ulong" => TokenKind.Ulong,
+                "unchecked" => TokenKind.Unchecked,
+                "unsafe" => TokenKind.Unsafe,
+                "ushort" => TokenKind.Ushort,
+                "using" => TokenKind.Using,
+                "virtual" => TokenKind.Virtual,
+                "void" => TokenKind.Void,
+                "volatile" => TokenKind.Volatile,
+                "while" => TokenKind.While,
+                _ => TokenKind.Identifier
+            }
         };
 
         return new SyntaxToken(kind, text, start);
