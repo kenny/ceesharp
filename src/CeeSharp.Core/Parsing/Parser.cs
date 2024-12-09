@@ -15,11 +15,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         var usings = ParseUsings();
-        var declarations = ParseDeclarations();
+        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
 
-        return new CompilationUnitNode(usings, declarations);
+        if (!TryExpect(TokenKind.EndOfFile, out _)) SkipUntil(); // Skip until the end
+
+        isInErrorRecovery = false;
+
+        var endOfFile = Current;
+
+        return new CompilationUnitNode(usings, declarations, endOfFile);
     }
-    
+
     private SyntaxToken ExpectIdentifier()
     {
         if (!TryExpect(TokenKind.Identifier, out var token))
@@ -31,7 +37,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private SyntaxToken Expect(TokenKind kind, string text)
     {
         if (!TryExpect(kind, out var token))
-            diagnostics.ReportError(Previous.EndPosition, $"Expected {text}");
+            diagnostics.ReportError(Previous.EndPosition, $"{text} expected");
 
         return token;
     }
@@ -72,7 +78,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             usings.Add(directive);
 
             if (isInErrorRecovery)
-                SkipUntil(TokenKind.Using, TokenKind.Class, TokenKind.EndOfFile);
+                SkipUntil(TokenKind.Using, TokenKind.Class);
         }
 
         return usings.ToImmutable();
@@ -87,31 +93,33 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new UsingDirectiveNode(usingKeyword, identifier, semicolon);
     }
 
-    private ImmutableArray<DeclarationNode> ParseDeclarations()
+    private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationContext declarationContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
-        while (Current.Kind != TokenKind.EndOfFile)
+        while (Current.Kind is not TokenKind.EndOfFile)
         {
-            var declaration = ParseDeclaration();
+            var declaration = ParseNamespaceOrTypeDeclaration(declarationContext);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery) SkipUntil(TokenKind.Class, TokenKind.EndOfFile);
+            if (isInErrorRecovery) SkipUntil(TokenKind.Namespace, TokenKind.Class);
         }
 
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseDeclaration()
+    private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationContext declarationContext)
     {
         switch (Current.Kind)
         {
+            case TokenKind.Namespace:
+                return ParseNamespaceDeclaration();
             case TokenKind.Class:
-                return ParseClassDeclaration();
+                return ParseTypeDeclaration(declarationContext);
             default:
                 if (!isInErrorRecovery)
                 {
-                    diagnostics.ReportError(Current.Position, "Expected declaration");
+                    diagnostics.ReportError(Current.Position, "Type or namespace definition, or end-of-file expected");
                     isInErrorRecovery = true;
                 }
 
@@ -119,13 +127,79 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private ClassDeclarationNode ParseClassDeclaration()
+    private NamespaceDeclarationNode ParseNamespaceDeclaration()
+    {
+        var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
+        var name = ExpectIdentifier();
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, declarations, closeBrace);
+    }
+
+    private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationContext declarationContext)
+    {
+        var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
+
+        while (Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
+        {
+            var declaration = ParseTypeDeclaration(DeclarationContext.Class);
+            if (declaration != null) declarations.Add(declaration);
+
+            if (isInErrorRecovery && DeclarationAcceptsToken(declarationContext, Current.Kind))
+            {
+                isInErrorRecovery = false;
+
+                break;
+            }
+
+            if (isInErrorRecovery) SkipUntil(TokenKind.Class);
+        }
+
+        return declarations.ToImmutable();
+    }
+
+    private DeclarationNode? ParseTypeDeclaration(DeclarationContext declarationContext)
+    {
+        switch (Current.Kind)
+        {
+            case TokenKind.Class:
+                return ParseClassDeclaration(declarationContext);
+            default:
+                if (!isInErrorRecovery) isInErrorRecovery = true;
+
+                return null;
+        }
+    }
+
+    private ClassDeclarationNode ParseClassDeclaration(DeclarationContext declarationContext)
     {
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var declarations = ParseTypeDeclarations(declarationContext);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new ClassDeclarationNode(classKeyword, identifier, openBrace, closeBrace);
+        return new ClassDeclarationNode(classKeyword, identifier, openBrace, declarations, closeBrace);
+    }
+
+    private static bool DeclarationAcceptsToken(DeclarationContext declarationContext, TokenKind tokenKind)
+    {
+        switch (declarationContext)
+        {
+            case DeclarationContext.Namespace:
+                return tokenKind is TokenKind.Namespace or TokenKind.Class;
+            case DeclarationContext.Class:
+                return tokenKind is TokenKind.Class;
+            default:
+                return false;
+        }
+    }
+
+    private enum DeclarationContext
+    {
+        Namespace,
+        Class
     }
 }

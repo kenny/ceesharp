@@ -2,8 +2,8 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record ClassDeclarationNode(
-    SyntaxToken ClassKeyword,
+public record NamespaceDeclarationNode(
+    SyntaxToken NamespaceKeyword,
     SyntaxToken Identifier,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
