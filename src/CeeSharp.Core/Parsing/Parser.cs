@@ -97,7 +97,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
-        while (Current.Kind is not TokenKind.EndOfFile)
+        while (Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
             var declaration = ParseNamespaceOrTypeDeclaration(declarationContext);
             if (declaration != null) declarations.Add(declaration);
@@ -132,10 +132,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
         var name = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var usings = ParseUsings();
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, declarations, closeBrace);
+        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace);
     }
 
     private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationContext declarationContext)
