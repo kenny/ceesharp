@@ -14,7 +14,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     public CompilationUnitNode Parse()
     {
-        var usings = ParseUsings();
+        var usings = ParseUsings(DeclarationContext.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out _)) SkipUntil(); // Skip until the end
@@ -50,6 +50,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             tokenStream.Advance();
 
+            isInErrorRecovery = false;
+
             return true;
         }
 
@@ -68,17 +70,29 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         isInErrorRecovery = false;
     }
 
-    private ImmutableArray<UsingDirectiveNode> ParseUsings()
+    private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationContext declarationContext)
     {
         var usings = ImmutableArray.CreateBuilder<UsingDirectiveNode>();
 
-        while (Current.Kind == TokenKind.Using)
+        while (Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
-            var directive = ParseUsing();
-            usings.Add(directive);
+            if (Current.Kind == TokenKind.Using)
+            {
+                var directive = ParseUsing();
+                usings.Add(directive);
+            }
+            else
+            {
+                if (DeclarationAcceptsToken(declarationContext, Current.Kind))
+                    break;
+
+                diagnostics.ReportError(Current.Position, "The compilation unit or namespace contains an invalid declaration or directive");
+                
+                isInErrorRecovery = true;
+            }
 
             if (isInErrorRecovery)
-                SkipUntil(TokenKind.Using, TokenKind.Class);
+                SkipUntil(TokenKind.Using, TokenKind.Namespace, TokenKind.Class);
         }
 
         return usings.ToImmutable();
@@ -120,6 +134,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 if (!isInErrorRecovery)
                 {
                     diagnostics.ReportError(Current.Position, "Type or namespace definition, or end-of-file expected");
+                    
                     isInErrorRecovery = true;
                 }
 
@@ -132,7 +147,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
         var name = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var usings = ParseUsings();
+        var usings = ParseUsings(DeclarationContext.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
@@ -143,7 +158,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
-        while (Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
+        while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
             var declaration = ParseTypeDeclaration(DeclarationContext.Class);
             if (declaration != null) declarations.Add(declaration);
@@ -190,7 +205,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         switch (declarationContext)
         {
             case DeclarationContext.Namespace:
-                return tokenKind is TokenKind.Namespace or TokenKind.Class;
+                return tokenKind is TokenKind.Using or TokenKind.Namespace or TokenKind.Class;
             case DeclarationContext.Class:
                 return tokenKind is TokenKind.Class;
             default:
