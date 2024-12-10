@@ -148,4 +148,23 @@ public static class TokenKindExtensions
     {
         return (int)tokenKind >= 0 && (int)tokenKind <= (int)TokenKind.While;
     }
+
+    public static bool IsModifier(this TokenKind kind) => kind switch
+    {
+        TokenKind.Public or
+            TokenKind.Private or
+            TokenKind.Protected or
+            TokenKind.Internal or
+            TokenKind.Abstract or
+            TokenKind.Sealed or
+            TokenKind.Static or
+            TokenKind.Virtual or
+            TokenKind.Extern or
+            TokenKind.Override or
+            TokenKind.Readonly or
+            TokenKind.Volatile or
+            TokenKind.Unsafe or
+            TokenKind.New => true,
+        _ => false
+    };
 }

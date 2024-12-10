@@ -124,12 +124,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationContext declarationContext)
     {
+        var modifiers = ParseModifiers();
+        
         switch (Current.Kind)
         {
-            case TokenKind.Namespace:
+            case TokenKind.Namespace when modifiers.IsEmpty:
                 return ParseNamespaceDeclaration();
             case TokenKind.Class:
-                return ParseTypeDeclaration(declarationContext);
+                return ParseTypeDeclaration(declarationContext, modifiers);
             default:
                 if (!isInErrorRecovery)
                 {
@@ -153,6 +155,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace);
     }
+    
+    private ImmutableArray<SyntaxToken> ParseModifiers()
+    {
+        var modifiers = ImmutableArray.CreateBuilder<SyntaxToken>();
+        
+        while (Current.Kind.IsModifier())
+        {
+            modifiers.Add(Current);
+            tokenStream.Advance();
+        }
+        
+        return modifiers.ToImmutable();
+    }
 
     private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationContext declarationContext)
     {
@@ -160,7 +175,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
-            var declaration = ParseTypeDeclaration(DeclarationContext.Class);
+            var modifiers = ParseModifiers();
+            var declaration = ParseTypeDeclaration(DeclarationContext.Type, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
             if (isInErrorRecovery && DeclarationAcceptsToken(declarationContext, Current.Kind))
@@ -176,12 +192,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseTypeDeclaration(DeclarationContext declarationContext)
+    private DeclarationNode? ParseTypeDeclaration(DeclarationContext declarationContext,
+        ImmutableArray<SyntaxToken> modifiers)
     {
         switch (Current.Kind)
         {
             case TokenKind.Class:
-                return ParseClassDeclaration(declarationContext);
+                return ParseClassDeclaration(declarationContext, modifiers);
             default:
                 if (!isInErrorRecovery) isInErrorRecovery = true;
 
@@ -189,15 +206,16 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private ClassDeclarationNode ParseClassDeclaration(DeclarationContext declarationContext)
+    private ClassDeclarationNode ParseClassDeclaration(DeclarationContext declarationContext,
+        ImmutableArray<SyntaxToken> modifiers)
     {
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var declarations = ParseTypeDeclarations(declarationContext);
+        var declarations = ParseTypeDeclarations(DeclarationContext.Type);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new ClassDeclarationNode(classKeyword, identifier, openBrace, declarations, closeBrace);
+        return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
     private static bool DeclarationAcceptsToken(DeclarationContext declarationContext, TokenKind tokenKind)
@@ -205,17 +223,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         switch (declarationContext)
         {
             case DeclarationContext.Namespace:
-                return tokenKind is TokenKind.Using or TokenKind.Namespace or TokenKind.Class;
-            case DeclarationContext.Class:
-                return tokenKind is TokenKind.Class;
+                return tokenKind.IsModifier() || tokenKind is TokenKind.Using or TokenKind.Namespace or TokenKind.Class;
+            case DeclarationContext.Type:
+                return tokenKind.IsModifier() || tokenKind is TokenKind.Class;
             default:
                 return false;
         }
     }
-
+    
     private enum DeclarationContext
     {
         Namespace,
-        Class
+        Type
     }
 }
