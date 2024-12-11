@@ -723,7 +723,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
             return triviaList.ToImmutable();
         }
     }
-    
+
     private SyntaxTrivia ScanEndOfLine()
     {
         var start = position;
@@ -736,20 +736,20 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
         var length = position - start;
         var text = sourceText.GetText(start, length);
 
-        return new SyntaxTrivia(text, TriviaKind.EndOfLine, start);
+        return new TextSyntaxTrivia(TriviaKind.EndOfLine, text, start);
     }
-    
+
     private SyntaxTrivia ScanWhitespace()
     {
         var start = position;
-        
+
         while (char.IsWhiteSpace(Current) && Current is not ('\r' or '\n'))
             Advance();
 
         var length = position - start;
         var text = sourceText.GetText(start, length);
 
-        return new SyntaxTrivia(text, TriviaKind.Whitespace, start);
+        return new TextSyntaxTrivia(TriviaKind.Whitespace, text, start);
     }
 
     private SyntaxTrivia ScanComment()
@@ -784,6 +784,6 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
         var length = position - start;
         var text = sourceText.GetText(start, length);
 
-        return new SyntaxTrivia(text, triviaKind, start);
+        return new TextSyntaxTrivia(triviaKind, text, start);
     }
 }

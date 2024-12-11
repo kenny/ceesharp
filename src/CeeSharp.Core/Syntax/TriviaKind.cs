@@ -5,5 +5,6 @@ public enum TriviaKind
     Whitespace,
     EndOfLine,
     SingleLineComment,
-    MultiLineComment
+    MultiLineComment,
+    SkippedToken
 }

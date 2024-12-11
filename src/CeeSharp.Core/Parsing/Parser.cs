@@ -7,6 +7,7 @@ namespace CeeSharp.Core.Parsing;
 
 public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 {
+    private readonly ImmutableArray<SyntaxTrivia>.Builder skippedTokens = ImmutableArray.CreateBuilder<SyntaxTrivia>();
     private bool isInErrorRecovery;
 
     private SyntaxToken Current => tokenStream.Current;
@@ -14,15 +15,16 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     public CompilationUnitNode Parse()
     {
+        skippedTokens.Clear();
+        isInErrorRecovery = false;
+
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
-        if (!TryExpect(TokenKind.EndOfFile, out _))
+        if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
             SkipUntilEnd();
 
         isInErrorRecovery = false;
-
-        var endOfFile = Current;
 
         return new CompilationUnitNode(usings, declarations, endOfFile);
     }
@@ -47,7 +49,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         if (Current.Kind == kind)
         {
-            token = Current;
+            var current = Current;
+
+            token = Current with
+            {
+                LeadingTrivia = current.LeadingTrivia.AddRange(skippedTokens)
+            };
+
+            skippedTokens.Clear();
 
             tokenStream.Advance();
 
@@ -80,6 +89,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 isInErrorRecovery = false;
                 return;
             }
+
+            skippedTokens.Add(new TokenSyntaxTrivia(TriviaKind.SkippedToken, Current, Current.Position));
 
             tokenStream.Advance();
         }

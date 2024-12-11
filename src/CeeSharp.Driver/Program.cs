@@ -77,17 +77,23 @@ foreach (var diagnostic in diagnostics.AllDiagnostics)
 void WriteTrivia(ImmutableArray<SyntaxTrivia> trivia)
 {
     foreach (var triviaNode in trivia)
-        switch (triviaNode.Kind)
+        switch (triviaNode)
         {
-            case TriviaKind.EndOfLine:
-            case TriviaKind.Whitespace:
-                Console.Write(triviaNode.Text);
-                break;
-            case TriviaKind.SingleLineComment:
-            case TriviaKind.MultiLineComment:
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(triviaNode.Text);
-                Console.ResetColor();
+            case TextSyntaxTrivia textTrivia:
+                switch (textTrivia.Kind)
+                {
+                    case TriviaKind.EndOfLine:
+                    case TriviaKind.Whitespace:
+                        Console.Write(textTrivia.Text);
+                        break;
+                    case TriviaKind.SingleLineComment:
+                    case TriviaKind.MultiLineComment:
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.Write(textTrivia.Text);
+                        Console.ResetColor();
+                        break;
+                }
+
                 break;
         }
 }

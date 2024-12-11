@@ -1,10 +1,17 @@
 namespace CeeSharp.Core.Syntax;
 
-public class SyntaxTrivia(string text, TriviaKind kind, int position)
+public abstract record SyntaxTrivia(TriviaKind Kind, int Position)
 {
-    public string Text { get; } = text;
-    public TriviaKind Kind { get; } = kind;
-    public int Position { get; } = position;
+    public abstract int Width { get; }
     public int EndPosition => Position + Width;
-    public int Width => Text.Length;
+}
+
+public record TextSyntaxTrivia(TriviaKind Kind, string Text, int Position) : SyntaxTrivia(Kind, Position)
+{
+    public override int Width => Text.Length;
+}
+
+public record TokenSyntaxTrivia(TriviaKind Kind, SyntaxToken Token, int Position) : SyntaxTrivia(Kind, Position)
+{
+    public override int Width => Token.Width;
 }
