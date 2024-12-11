@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record ClassDeclarationNode(
+public record StructDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
-    SyntaxToken ClassKeyword,
+    SyntaxToken StructKeyword,
     SyntaxToken Identifier,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
@@ -14,7 +14,7 @@ public record ClassDeclarationNode(
     {
         if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
             return true;
-        
+
         return modifierKind is TokenKind.Public
             or TokenKind.Private
             or TokenKind.Protected
@@ -30,5 +30,5 @@ public record ClassDeclarationNode(
             yield return child;
     }
 
-    public override DeclarationKind DeclarationKind => DeclarationKind.Class;
+    public override DeclarationKind DeclarationKind => DeclarationKind.Struct;
 }

@@ -93,7 +93,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             }
 
             if (isInErrorRecovery)
-                SkipUntil(TokenKind.Using, TokenKind.Namespace, TokenKind.Class);
+                SkipUntil(TokenKind.Using, TokenKind.Namespace, TokenKind.Class, TokenKind.Struct);
         }
 
         return usings.ToImmutable();
@@ -117,7 +117,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             var declaration = ParseNamespaceOrTypeDeclaration(declarationContext);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery) SkipUntil(TokenKind.Namespace, TokenKind.Class);
+            if (isInErrorRecovery) SkipUntil(TokenKind.Namespace, TokenKind.Class, TokenKind.Struct);
         }
 
         return declarations.ToImmutable();
@@ -132,6 +132,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Namespace when modifiers.IsEmpty:
                 return ParseNamespaceDeclaration();
             case TokenKind.Class:
+            case TokenKind.Struct:
                 return ParseTypeDeclaration(declarationContext, modifiers);
             default:
                 if (!isInErrorRecovery)
@@ -209,7 +210,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 break;
             }
 
-            if (isInErrorRecovery) SkipUntil(TokenKind.Class);
+            if (isInErrorRecovery) SkipUntil(TokenKind.Class, TokenKind.Struct);
         }
 
         return declarations.ToImmutable();
@@ -222,6 +223,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         {
             case TokenKind.Class:
                 return ParseClassDeclaration(declarationContext, modifiers);
+            case TokenKind.Struct:
+                return ParseStructDeclaration(declarationContext, modifiers);
             default:
                 if (!isInErrorRecovery) isInErrorRecovery = true;
 
@@ -242,15 +245,35 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
+    
+
+    private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
+
+        var classKeyword = Expect(TokenKind.Struct, "struct");
+        var identifier = ExpectIdentifier();
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var declarations = ParseTypeDeclarations(DeclarationKind.Struct);
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new StructDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
+    }
 
     private static bool DeclarationAcceptsToken(DeclarationKind declarationKind, TokenKind tokenKind)
     {
         switch (declarationKind)
         {
             case DeclarationKind.Namespace:
-                return tokenKind.IsModifier() || tokenKind is TokenKind.Using or TokenKind.Namespace or TokenKind.Class;
+                return tokenKind.IsModifier() || tokenKind is TokenKind.Using
+                    or TokenKind.Namespace
+                    or TokenKind.Class
+                    or TokenKind.Struct;
             case DeclarationKind.Class:
-                return tokenKind.IsModifier() || tokenKind is TokenKind.Class;
+            case DeclarationKind.Struct:
+                return tokenKind.IsModifier() || tokenKind is TokenKind.Class
+                    or TokenKind.Struct;
             default:
                 return false;
         }
