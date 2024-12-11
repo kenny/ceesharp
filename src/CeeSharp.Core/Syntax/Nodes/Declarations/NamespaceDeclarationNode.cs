@@ -18,4 +18,6 @@ public record NamespaceDeclarationNode(
         foreach (var child in Declarations)
             yield return child;
     }
+    
+    public override DeclarationKind DeclarationKind => DeclarationKind.Namespace;
 }

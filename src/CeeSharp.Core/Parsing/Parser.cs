@@ -14,8 +14,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     public CompilationUnitNode Parse()
     {
-        var usings = ParseUsings(DeclarationContext.Namespace);
-        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
+        var usings = ParseUsings(DeclarationKind.Namespace);
+        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out _)) SkipUntil(); // Skip until the end
 
@@ -70,7 +70,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         isInErrorRecovery = false;
     }
 
-    private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationContext declarationContext)
+    private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationKind declarationContext)
     {
         var usings = ImmutableArray.CreateBuilder<UsingDirectiveNode>();
 
@@ -86,8 +86,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 if (DeclarationAcceptsToken(declarationContext, Current.Kind))
                     break;
 
-                diagnostics.ReportError(Current.Position, "The compilation unit or namespace contains an invalid declaration or directive");
-                
+                diagnostics.ReportError(Current.Position,
+                    "The compilation unit or namespace contains an invalid declaration or directive");
+
                 isInErrorRecovery = true;
             }
 
@@ -107,7 +108,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new UsingDirectiveNode(usingKeyword, identifier, semicolon);
     }
 
-    private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationContext declarationContext)
+    private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationKind declarationContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
@@ -122,10 +123,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationContext declarationContext)
+    private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationKind declarationContext)
     {
         var modifiers = ParseModifiers();
-        
+
         switch (Current.Kind)
         {
             case TokenKind.Namespace when modifiers.IsEmpty:
@@ -136,7 +137,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 if (!isInErrorRecovery)
                 {
                     diagnostics.ReportError(Current.Position, "Type or namespace definition, or end-of-file expected");
-                    
+
                     isInErrorRecovery = true;
                 }
 
@@ -149,34 +150,56 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
         var name = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var usings = ParseUsings(DeclarationContext.Namespace);
-        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationContext.Namespace);
+        var usings = ParseUsings(DeclarationKind.Namespace);
+        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace);
     }
-    
+
     private ImmutableArray<SyntaxToken> ParseModifiers()
     {
         var modifiers = ImmutableArray.CreateBuilder<SyntaxToken>();
-        
+
         while (Current.Kind.IsModifier())
         {
             modifiers.Add(Current);
             tokenStream.Advance();
         }
-        
+
         return modifiers.ToImmutable();
     }
 
-    private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationContext declarationContext)
+    private void ValidateModifiers<TNode>(DeclarationKind declarationContext, ImmutableArray<SyntaxToken> modifiers)
+        where TNode : IMemberNode
+    {
+        var seenModifiers = new HashSet<TokenKind>();
+
+        foreach (var modifier in modifiers)
+            if (!seenModifiers.Add(modifier.Kind))
+                diagnostics.ReportError(modifier.Position, $"Duplicate '{modifier.Text}' modifier");
+
+        seenModifiers.Clear();
+
+        foreach (var modifier in modifiers)
+        {
+            if (!seenModifiers.Add(modifier.Kind))
+                continue;
+
+            if (!TNode.IsModifierValid(declarationContext, modifier.Kind))
+                diagnostics.ReportError(modifier.Position,
+                    $"The modifier '{modifier.Text}' is not valid for this item");
+        }
+    }
+
+    private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationKind declarationContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
         while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
             var modifiers = ParseModifiers();
-            var declaration = ParseTypeDeclaration(DeclarationContext.Type, modifiers);
+            var declaration = ParseTypeDeclaration(declarationContext, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
             if (isInErrorRecovery && DeclarationAcceptsToken(declarationContext, Current.Kind))
@@ -192,7 +215,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseTypeDeclaration(DeclarationContext declarationContext,
+    private DeclarationNode? ParseTypeDeclaration(DeclarationKind declarationContext,
         ImmutableArray<SyntaxToken> modifiers)
     {
         switch (Current.Kind)
@@ -206,34 +229,30 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private ClassDeclarationNode ParseClassDeclaration(DeclarationContext declarationContext,
+    private ClassDeclarationNode ParseClassDeclaration(DeclarationKind declarationContext,
         ImmutableArray<SyntaxToken> modifiers)
     {
+        ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
+
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var declarations = ParseTypeDeclarations(DeclarationContext.Type);
+        var declarations = ParseTypeDeclarations(DeclarationKind.Class);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
-    private static bool DeclarationAcceptsToken(DeclarationContext declarationContext, TokenKind tokenKind)
+    private static bool DeclarationAcceptsToken(DeclarationKind declarationKind, TokenKind tokenKind)
     {
-        switch (declarationContext)
+        switch (declarationKind)
         {
-            case DeclarationContext.Namespace:
+            case DeclarationKind.Namespace:
                 return tokenKind.IsModifier() || tokenKind is TokenKind.Using or TokenKind.Namespace or TokenKind.Class;
-            case DeclarationContext.Type:
+            case DeclarationKind.Class:
                 return tokenKind.IsModifier() || tokenKind is TokenKind.Class;
             default:
                 return false;
         }
-    }
-    
-    private enum DeclarationContext
-    {
-        Namespace,
-        Type
     }
 }
