@@ -166,7 +166,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 return new SyntaxToken(TokenKind.TimesAssign, "*=", start);
             case '*':
                 Advance();
-                return new SyntaxToken(TokenKind.Times, "*", start);
+                return new SyntaxToken(TokenKind.Asterisk, "*", start);
 
             case '/' when Lookahead == '=':
                 position += 2;

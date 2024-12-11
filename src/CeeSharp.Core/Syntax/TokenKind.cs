@@ -84,7 +84,7 @@ public enum TokenKind
     // Operators
     Plus, // +
     Minus, // -
-    Times, // *
+    Asterisk, // *
     Divide, // /
     Modulo, // %
     Ampersand, // &
