@@ -17,7 +17,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
-        if (!TryExpect(TokenKind.EndOfFile, out _)) SkipUntil(); // Skip until the end
+        if (!TryExpect(TokenKind.EndOfFile, out _))
+            SkipUntilEnd();
 
         isInErrorRecovery = false;
 
@@ -62,12 +63,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return false;
     }
 
-    private void SkipUntil(params TokenKind[] synchronizingTokens)
+    private void SkipUntilEnd()
     {
-        while (Current.Kind != TokenKind.EndOfFile &&
-               !synchronizingTokens.Contains(Current.Kind)) tokenStream.Advance();
+        while (Current.Kind != TokenKind.EndOfFile)
+            tokenStream.Advance();
 
         isInErrorRecovery = false;
+    }
+
+    private void Synchronize(DeclarationKind context, params TokenKind[] synchronizingTokens)
+    {
+        while (Current.Kind != TokenKind.EndOfFile)
+        {
+            if (IsTokenValidForDeclaration(context, Current.Kind) || synchronizingTokens.Contains(Current.Kind))
+            {
+                isInErrorRecovery = false;
+                return;
+            }
+
+            tokenStream.Advance();
+        }
     }
 
     private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationKind declarationContext)
@@ -83,7 +98,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             }
             else
             {
-                if (DeclarationAcceptsToken(declarationContext, Current.Kind))
+                if (IsTokenValidForDeclaration(declarationContext, Current.Kind))
                     break;
 
                 diagnostics.ReportError(Current.Position,
@@ -92,8 +107,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 isInErrorRecovery = true;
             }
 
-            if (isInErrorRecovery)
-                SkipUntil(TokenKind.Using, TokenKind.Namespace, TokenKind.Class, TokenKind.Struct);
+            if (isInErrorRecovery) Synchronize(declarationContext, TokenKind.Using);
         }
 
         return usings.ToImmutable();
@@ -117,7 +131,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             var declaration = ParseNamespaceOrTypeDeclaration(declarationContext);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery) SkipUntil(TokenKind.Namespace, TokenKind.Class, TokenKind.Struct);
+            if (isInErrorRecovery) Synchronize(declarationContext);
         }
 
         return declarations.ToImmutable();
@@ -203,14 +217,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             var declaration = ParseTypeDeclaration(declarationContext, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery && DeclarationAcceptsToken(declarationContext, Current.Kind))
+            if (isInErrorRecovery && IsTokenValidForDeclaration(declarationContext, Current.Kind))
             {
                 isInErrorRecovery = false;
 
                 break;
             }
 
-            if (isInErrorRecovery) SkipUntil(TokenKind.Class, TokenKind.Struct);
+            if (isInErrorRecovery) Synchronize(declarationContext, TokenKind.Using);
         }
 
         return declarations.ToImmutable();
@@ -245,7 +259,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
-    
+
 
     private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
         ImmutableArray<SyntaxToken> modifiers)
@@ -261,13 +275,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new StructDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
-    private static bool DeclarationAcceptsToken(DeclarationKind declarationKind, TokenKind tokenKind)
+    private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
     {
         switch (declarationKind)
         {
             case DeclarationKind.Namespace:
-                return tokenKind.IsModifier() || tokenKind is TokenKind.Using
-                    or TokenKind.Namespace
+                return tokenKind
+                    is TokenKind.Namespace
                     or TokenKind.Class
                     or TokenKind.Struct;
             case DeclarationKind.Class:
