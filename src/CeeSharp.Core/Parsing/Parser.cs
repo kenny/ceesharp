@@ -467,10 +467,24 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ParameterNode ParseParameter()
     {
+        var modifiers = ParseParameterModifiers();
         var type = ParseType();
         var identifier = ExpectIdentifier();
 
-        return new ParameterNode(type, identifier);
+        return new ParameterNode(modifiers, type, identifier);
+    }
+
+    private ImmutableArray<SyntaxToken> ParseParameterModifiers()
+    {
+        var modifiers = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        while (Current.Kind.IsParameterModifier())
+        {
+            modifiers.Add(Current);
+            tokenStream.Advance();
+        }
+
+        return modifiers.ToImmutable();
     }
 
     private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
@@ -489,7 +503,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                            or TokenKind.Struct
                            or TokenKind.Identifier;
             case DeclarationKind.ParameterList:
-                return tokenKind.IsPredefinedType() || tokenKind is TokenKind.Identifier;
+                return tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
+                       tokenKind is TokenKind.Identifier;
             default:
                 return false;
         }

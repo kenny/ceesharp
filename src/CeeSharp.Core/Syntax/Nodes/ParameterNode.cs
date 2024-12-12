@@ -1,5 +1,9 @@
+using System.Collections.Immutable;
 using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public record ParameterNode(TypeSyntax Type, SyntaxToken Identifier) : SyntaxNode;
+public record ParameterNode(
+    ImmutableArray<SyntaxToken> Modifiers,
+    TypeSyntax Type,
+    SyntaxToken Identifier) : SyntaxNode;

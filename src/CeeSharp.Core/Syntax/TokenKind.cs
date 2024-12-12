@@ -167,6 +167,14 @@ public static class TokenKindExtensions
             TokenKind.New => true,
         _ => false
     };
+    
+    public static bool IsParameterModifier(this TokenKind kind) => kind switch
+    {
+        TokenKind.Ref or
+            TokenKind.Out or 
+            TokenKind.Params => true,
+        _ => false
+    };
 
     public static bool IsPredefinedType(this TokenKind kind) => kind switch
     {
