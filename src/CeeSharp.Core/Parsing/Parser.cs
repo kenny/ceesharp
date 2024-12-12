@@ -12,7 +12,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private bool isInErrorRecovery;
 
     private SyntaxToken Current => tokenStream.Current;
-    
+
+    private SyntaxToken Lookahead => tokenStream.Lookahead;
     private SyntaxToken Previous => tokenStream.Previous;
 
     public CompilationUnitNode Parse()
@@ -38,11 +39,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return token;
     }
-    
+
     private SyntaxToken Expect(TokenKind kind)
     {
         _ = TryExpect(kind, out var token);
-        
+
         return token;
     }
 
@@ -120,13 +121,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return type;
     }
-    
+
     private TypeSyntax ParseNonArrayType()
     {
         TypeSyntax? left = ParsePredefinedType();
 
         left ??= ParseQualifiedType();
-        
+
         if (Current.Kind == TokenKind.Asterisk)
             return new PointerTypeSyntax(left, Expect(TokenKind.Asterisk));
 
@@ -152,31 +153,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private SimpleTypeSyntax ParseSimpleType()
     {
         var identifier = ExpectIdentifier();
-        
+
         return new SimpleTypeSyntax(identifier);
     }
 
     private PredefinedTypeSyntax? ParsePredefinedType()
     {
-        switch (Current.Kind)
-        {
-            case TokenKind.Object:
-            case TokenKind.String:
-            case TokenKind.Bool:
-            case TokenKind.Byte:
-            case TokenKind.Sbyte:
-            case TokenKind.Char:
-            case TokenKind.Decimal:
-            case TokenKind.Double:
-            case TokenKind.Float:
-            case TokenKind.Int:
-            case TokenKind.Uint:
-            case TokenKind.Long:
-            case TokenKind.Ulong:
-            case TokenKind.Ushort:
-            case TokenKind.Void:
-                return new PredefinedTypeSyntax(Expect(Current.Kind));
-        }
+        if (Current.Kind.IsPredefinedType())
+            return new PredefinedTypeSyntax(Expect(Current.Kind));
 
         return null;
     }
@@ -310,20 +294,62 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
             var modifiers = ParseModifiers();
-            var declaration = ParseTypeDeclaration(declarationContext, modifiers);
+            var declaration = ParseMemberDeclaration(declarationContext, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
             if (isInErrorRecovery && IsTokenValidForDeclaration(declarationContext, Current.Kind))
             {
                 isInErrorRecovery = false;
-
                 break;
             }
 
-            if (isInErrorRecovery) Synchronize(declarationContext, TokenKind.Using);
+            if (isInErrorRecovery) Synchronize(declarationContext);
         }
 
         return declarations.ToImmutable();
+    }
+
+    private DeclarationNode? ParseMemberDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        switch (Current.Kind)
+        {
+            case TokenKind.Class:
+            case TokenKind.Struct:
+                return ParseTypeDeclaration(declarationContext, modifiers);
+
+            case TokenKind.Identifier when declarationContext != DeclarationKind.Namespace:
+                if (Lookahead.Kind != TokenKind.OpenParen)
+                {
+                    var type = ParseType();
+                    return ParseMethodDeclaration(declarationContext, modifiers, type);
+                }
+
+                return ParseConstructorDeclaration(declarationContext, modifiers);
+
+            case TokenKind.Void:
+            case TokenKind.Int:
+            case TokenKind.String:
+            case TokenKind.Bool:
+            case TokenKind.Double:
+            case TokenKind.Float:
+            case TokenKind.Long:
+            case TokenKind.Short:
+            case TokenKind.Byte:
+            case TokenKind.Char:
+            case TokenKind.Decimal:
+            case TokenKind.Object:
+                var predefinedType = ParsePredefinedType();
+                return ParseMethodDeclaration(declarationContext, modifiers, predefinedType!);
+            default:
+                if (!isInErrorRecovery)
+                {
+                    diagnostics.ReportError(Current.Position, "Member declaration expected");
+                    isInErrorRecovery = true;
+                }
+
+                return null;
+        }
     }
 
     private DeclarationNode? ParseTypeDeclaration(DeclarationKind declarationContext,
@@ -356,7 +382,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
-
     private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
         ImmutableArray<SyntaxToken> modifiers)
     {
@@ -371,19 +396,62 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new StructDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
+    private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType)
+    {
+        ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
+
+        var identifier = ExpectIdentifier();
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new MethodDeclarationNode(
+            modifiers,
+            returnType,
+            identifier,
+            openParen,
+            closeParen,
+            openBrace,
+            closeBrace);
+    }
+
+    private ConstructorDeclarationNode ParseConstructorDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
+
+        var identifier = ExpectIdentifier();
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new ConstructorDeclarationNode(
+            modifiers,
+            identifier,
+            openParen,
+            closeParen,
+            openBrace,
+            closeBrace);
+    }
+
     private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
     {
         switch (declarationKind)
         {
             case DeclarationKind.Namespace:
-                return tokenKind
-                    is TokenKind.Namespace
-                    or TokenKind.Class
-                    or TokenKind.Struct;
+                return tokenKind.IsModifier() ||
+                       tokenKind is TokenKind.Namespace
+                           or TokenKind.Class
+                           or TokenKind.Struct;
             case DeclarationKind.Class:
             case DeclarationKind.Struct:
-                return tokenKind.IsModifier() || tokenKind is TokenKind.Class
-                    or TokenKind.Struct;
+                return tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
+                       tokenKind is TokenKind.Class
+                           or TokenKind.Struct
+                           or TokenKind.Identifier;
             default:
                 return false;
         }

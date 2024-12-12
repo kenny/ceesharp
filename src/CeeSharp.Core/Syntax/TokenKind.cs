@@ -167,4 +167,24 @@ public static class TokenKindExtensions
             TokenKind.New => true,
         _ => false
     };
+
+    public static bool IsPredefinedType(this TokenKind kind) => kind switch
+    {
+        TokenKind.Object or
+            TokenKind.String or
+            TokenKind.Bool or
+            TokenKind.Byte or
+            TokenKind.Sbyte or
+            TokenKind.Char or
+            TokenKind.Decimal or
+            TokenKind.Double or
+            TokenKind.Float or
+            TokenKind.Int or
+            TokenKind.Uint or
+            TokenKind.Long or
+            TokenKind.Ulong or
+            TokenKind.Ushort or
+            TokenKind.Void => true,
+        _ => false
+    };
 }
