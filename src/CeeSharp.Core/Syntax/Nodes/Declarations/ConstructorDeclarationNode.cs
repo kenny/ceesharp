@@ -10,7 +10,7 @@ public record ConstructorDeclarationNode(
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
     SyntaxToken OpenBrace,
-    SyntaxToken CloseBrace) : DeclarationNode, IMemberNode
+    SyntaxToken CloseBrace) : MemberDeclarationNode, IMemberNode
 {
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifier)
     {

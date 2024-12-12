@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax;
 
-public record SyntaxToken(TokenKind Kind, string Text, int Position, object? Value = null)
+public record SyntaxToken(TokenKind Kind, string Text, int Position, object? Value = null) : SyntaxElement
 {
     public int Width => Text.Length;
     public int FullWidth => CalculateFullWidth();

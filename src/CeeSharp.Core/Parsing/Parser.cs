@@ -18,9 +18,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     public CompilationUnitNode Parse()
     {
-        skippedTokens.Clear();
-        isInErrorRecovery = false;
-
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
@@ -28,7 +25,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             SkipUntilEnd();
 
         isInErrorRecovery = false;
-
+        skippedTokens.Clear();
+        
         return new CompilationUnitNode(usings, declarations, endOfFile);
     }
 
@@ -108,10 +106,27 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private TypeSyntax ParseType()
+    private TypeSyntax ParseExpectedType()
+    {
+        var type = ParseType();
+
+        if (type != null)
+            return type;
+        
+        diagnostics.ReportError(Current.Position, "Type expected");
+
+        isInErrorRecovery = true;
+
+        return new SimpleTypeSyntax(new SyntaxToken(TokenKind.Identifier, "", Current.Position));
+    }
+
+    private TypeSyntax? ParseType()
     {
         var type = ParseNonArrayType();
 
+        if (type == null)
+            return null;
+        
         while (Current.Kind == TokenKind.OpenBracket)
         {
             var openBracket = Expect(TokenKind.OpenBracket, "[");
@@ -123,11 +138,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return type;
     }
 
-    private TypeSyntax ParseNonArrayType()
+    private TypeSyntax? ParseNonArrayType()
     {
         TypeSyntax? left = ParsePredefinedType();
 
         left ??= ParseQualifiedType();
+
+        if (left == null)
+            return null;
 
         if (Current.Kind == TokenKind.Asterisk)
             return new PointerTypeSyntax(left, Expect(TokenKind.Asterisk));
@@ -135,15 +153,18 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return left;
     }
 
-    private TypeSyntax ParseQualifiedType()
+    private TypeSyntax? ParseQualifiedType()
     {
-        TypeSyntax left = ParseSimpleType();
+        TypeSyntax? left = ParseSimpleType();
+
+        if (left == null)
+            return null;
 
         while (Current.Kind == TokenKind.Dot)
         {
             var dot = Expect(TokenKind.Dot);
 
-            var right = ParseSimpleType();
+            var right = ParseSimpleTypeExact();
 
             left = new QualifiedTypeSyntax(left, dot, right);
         }
@@ -151,7 +172,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return left;
     }
 
-    private SimpleTypeSyntax ParseSimpleType()
+    private TypeSyntax ParseQualifiedTypeExact()
+    {
+        var type = ParseQualifiedType();
+
+        if (type != null)
+            return type;
+
+        return ParseSimpleTypeExact();
+    }
+
+    private SimpleTypeSyntax? ParseSimpleType()
+    {
+        if (!TryExpect(TokenKind.Identifier, out var identifier))
+            return null;
+
+        return new SimpleTypeSyntax(identifier);
+    }
+    
+    private SimpleTypeSyntax ParseSimpleTypeExact()
     {
         var identifier = ExpectIdentifier();
 
@@ -244,7 +283,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private NamespaceDeclarationNode ParseNamespaceDeclaration()
     {
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
-        var name = ParseQualifiedType();
+        var name = ParseQualifiedTypeExact();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
@@ -323,7 +362,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
                     var type = ParseType();
-                    return ParseMethodDeclaration(declarationContext, modifiers, type);
+
+                    if (!isInErrorRecovery)
+                        return ParseMethodDeclaration(declarationContext, modifiers, type!);
+                    
+                    isInErrorRecovery = false;
+
+                    return HandleIncompleteMember(declarationContext, modifiers, type!);
                 }
 
                 return ParseConstructorDeclaration(declarationContext, modifiers);
@@ -343,14 +388,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 var predefinedType = ParsePredefinedType();
                 return ParseMethodDeclaration(declarationContext, modifiers, predefinedType!);
             default:
-                if (!isInErrorRecovery)
-                {
-                    diagnostics.ReportError(Current.Position, "Member declaration expected");
-                    isInErrorRecovery = true;
-                }
-
-                return null;
+                return HandleIncompleteMember(declarationContext, modifiers);
         }
+    }
+
+    private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
+        ImmutableArray<SyntaxToken> modifiers, params SyntaxElement[] elements)
+    {
+        if (!isInErrorRecovery)
+        {
+            diagnostics.ReportError(Current.Position,
+                $"Invalid member declaration");
+            isInErrorRecovery = true;
+        }
+
+        Synchronize(declarationContext);
+
+        return new IncompleteMemberDeclarationNode(modifiers.As<SyntaxElement>().AddRange(elements));
     }
 
     private DeclarationNode? ParseTypeDeclaration(DeclarationKind declarationContext,
@@ -468,7 +522,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private ParameterNode ParseParameter()
     {
         var modifiers = ParseParameterModifiers();
-        var type = ParseType();
+        var type = ParseExpectedType();
+        
         var identifier = ExpectIdentifier();
 
         return new ParameterNode(modifiers, type, identifier);
