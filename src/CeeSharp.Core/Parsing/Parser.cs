@@ -76,7 +76,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         if (!isInErrorRecovery) isInErrorRecovery = true;
 
-        token = new SyntaxToken(kind, "", Previous.EndPosition);
+        token = new SyntaxToken(kind, "", Previous.EndPosition)
+        {
+            LeadingTrivia = Current.LeadingTrivia.AddRange(skippedTokens)
+        };
+        
+        skippedTokens.Clear();
 
         return false;
     }
@@ -284,6 +289,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
         var name = ParseQualifiedTypeExact();
+        
+        if(isInErrorRecovery) Synchronize(DeclarationKind.Namespace);
+        
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
@@ -460,8 +468,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openParen = Expect(TokenKind.OpenParen, "(");
         var parameters = ParseParameterList();
         var closeParen = Expect(TokenKind.CloseParen, ")");
-        var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        SyntaxElement blockOrSemicolon = Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseMethodBody(),
+            _ => Expect(TokenKind.Semicolon, ";")
+        };
+
+        if (isInErrorRecovery) isInErrorRecovery = false;
 
         return new MethodDeclarationNode(
             modifiers,
@@ -470,8 +484,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             openParen,
             parameters,
             closeParen,
-            openBrace,
-            closeBrace);
+            blockOrSemicolon);
     }
 
     private ConstructorDeclarationNode ParseConstructorDeclaration(DeclarationKind declarationContext,
@@ -483,8 +496,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openParen = Expect(TokenKind.OpenParen, "(");
         var parameters = ParseParameterList();
         var closeParen = Expect(TokenKind.CloseParen, ")");
-        var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        
+        SyntaxElement blockOrSemicolon = Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseMethodBody(),
+            _ => Expect(TokenKind.Semicolon, ";")
+        };
+
+        if (isInErrorRecovery) isInErrorRecovery = false;
 
         return new ConstructorDeclarationNode(
             modifiers,
@@ -492,11 +511,18 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             openParen,
             parameters,
             closeParen,
-            openBrace,
-            closeBrace);
+            blockOrSemicolon);
     }
-
-
+    
+    private BlockNode ParseMethodBody()
+    {
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+    
+        return new BlockNode(openBrace, closeBrace);
+    }
+    
     private SeparatedSyntaxList<ParameterNode> ParseParameterList()
     {
         var parameters = ImmutableArray.CreateBuilder<ParameterNode>();
@@ -556,7 +582,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
                        tokenKind is TokenKind.Class
                            or TokenKind.Struct
-                           or TokenKind.Identifier;
+                           or TokenKind.Identifier 
+                           or TokenKind.CloseBrace;
             case DeclarationKind.ParameterList:
                 return tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                        tokenKind is TokenKind.Identifier;

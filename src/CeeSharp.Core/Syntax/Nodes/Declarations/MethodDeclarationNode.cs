@@ -10,8 +10,7 @@ public record MethodDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
-    SyntaxToken OpenBrace,
-    SyntaxToken CloseBrace) : MemberDeclarationNode, IMemberNode
+    SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IMemberNode
 {
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifier)
     {
