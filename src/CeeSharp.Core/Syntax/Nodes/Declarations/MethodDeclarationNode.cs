@@ -8,6 +8,7 @@ public record MethodDeclarationNode(
     TypeSyntax ReturnType,
     SyntaxToken Identifier,
     SyntaxToken OpenParen,
+    SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
     SyntaxToken OpenBrace,
     SyntaxToken CloseBrace) : DeclarationNode, IMemberNode

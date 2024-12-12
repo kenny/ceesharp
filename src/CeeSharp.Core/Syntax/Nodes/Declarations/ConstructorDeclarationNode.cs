@@ -7,6 +7,7 @@ public record ConstructorDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken Identifier,
     SyntaxToken OpenParen,
+    SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
     SyntaxToken OpenBrace,
     SyntaxToken CloseBrace) : DeclarationNode, IMemberNode

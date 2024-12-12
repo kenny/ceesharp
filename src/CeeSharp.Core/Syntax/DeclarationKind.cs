@@ -8,6 +8,7 @@ public enum DeclarationKind
     Struct = 1 << 2,
     Method = 1 << 3,
     Constructor = 1 << 4,
+    ParameterList = 1 << 5,
 
     Type = Class | Struct
 }

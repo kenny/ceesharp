@@ -95,7 +95,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         while (Current.Kind != TokenKind.EndOfFile)
         {
-            if (IsTokenValidForDeclaration(context, Current.Kind) || synchronizingTokens.Contains(Current.Kind))
+            if ((context != DeclarationKind.None && IsTokenValidForDeclaration(context, Current.Kind)) ||
+                synchronizingTokens.Contains(Current.Kind))
             {
                 isInErrorRecovery = false;
                 return;
@@ -403,6 +404,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
+        var parameters = ParseParameterList();
         var closeParen = Expect(TokenKind.CloseParen, ")");
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
@@ -412,6 +414,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             returnType,
             identifier,
             openParen,
+            parameters,
             closeParen,
             openBrace,
             closeBrace);
@@ -424,6 +427,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
+        var parameters = ParseParameterList();
         var closeParen = Expect(TokenKind.CloseParen, ")");
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
@@ -432,9 +436,41 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             modifiers,
             identifier,
             openParen,
+            parameters,
             closeParen,
             openBrace,
             closeBrace);
+    }
+
+
+    private SeparatedSyntaxList<ParameterNode> ParseParameterList()
+    {
+        var parameters = ImmutableArray.CreateBuilder<ParameterNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        while (Current.Kind != TokenKind.CloseParen && Current.Kind != TokenKind.EndOfFile)
+        {
+            if (parameters.Count > 0)
+            {
+                separators.Add(Expect(TokenKind.Comma, ","));
+
+                if (isInErrorRecovery) Synchronize(DeclarationKind.ParameterList);
+            }
+
+            var parameter = ParseParameter();
+
+            parameters.Add(parameter);
+        }
+
+        return new SeparatedSyntaxList<ParameterNode>(parameters.ToImmutable(), separators.ToImmutable());
+    }
+
+    private ParameterNode ParseParameter()
+    {
+        var type = ParseType();
+        var identifier = ExpectIdentifier();
+
+        return new ParameterNode(type, identifier);
     }
 
     private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
@@ -452,6 +488,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                        tokenKind is TokenKind.Class
                            or TokenKind.Struct
                            or TokenKind.Identifier;
+            case DeclarationKind.ParameterList:
+                return tokenKind.IsPredefinedType() || tokenKind is TokenKind.Identifier;
             default:
                 return false;
         }
