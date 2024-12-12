@@ -241,12 +241,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private UsingDirectiveNode ParseUsing()
     {
         var usingKeyword = Expect(TokenKind.Using, "using");
+        var alias = ParseUsingAlias();
         var identifier = ExpectIdentifier();
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
-        return new UsingDirectiveNode(usingKeyword, identifier, semicolon);
+        return new UsingDirectiveNode(usingKeyword, alias, identifier, semicolon);
     }
 
+    private OptionalSyntax<UsingAliasNode> ParseUsingAlias()
+    {
+        if (Lookahead.Kind != TokenKind.Assign) 
+            return OptionalSyntax<UsingAliasNode>.None;
+        
+        var identifier = ExpectIdentifier();
+        var assign = Expect(TokenKind.Assign, "=");
+
+        return OptionalSyntax.With(new UsingAliasNode(identifier, assign));
+
+    }
+    
     private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationKind declarationContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
