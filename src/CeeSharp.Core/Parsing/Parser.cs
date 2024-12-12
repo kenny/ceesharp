@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CeeSharp.Core.Syntax;
 using CeeSharp.Core.Syntax.Nodes;
 using CeeSharp.Core.Syntax.Nodes.Declarations;
+using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Parsing;
 
@@ -11,6 +12,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private bool isInErrorRecovery;
 
     private SyntaxToken Current => tokenStream.Current;
+    
     private SyntaxToken Previous => tokenStream.Previous;
 
     public CompilationUnitNode Parse()
@@ -36,6 +38,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return token;
     }
+    
+    private SyntaxToken Expect(TokenKind kind)
+    {
+        _ = TryExpect(kind, out var token);
+        
+        return token;
+    }
+
 
     private SyntaxToken Expect(TokenKind kind, string text)
     {
@@ -94,6 +104,74 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             tokenStream.Advance();
         }
+    }
+
+    private TypeSyntax ParseType()
+    {
+        var type = ParseNonArrayType();
+
+        while (Current.Kind == TokenKind.OpenBracket)
+        {
+            var openBracket = Expect(TokenKind.OpenBracket, "[");
+            var closeBracket = Expect(TokenKind.CloseBracket, "]");
+
+            type = new ArrayTypeSyntax(type, openBracket, closeBracket);
+        }
+
+        return type;
+    }
+    
+    private TypeSyntax ParseNonArrayType()
+    {
+        TypeSyntax? left = ParsePredefinedType();
+
+        left ??= ParseSimpleType();
+
+        while (Current.Kind == TokenKind.Dot)
+        {
+            var dot = Expect(TokenKind.Dot);
+
+            var right = ParseSimpleType();
+
+            left = new QualifiedTypeSyntax(left, dot, right);
+        }
+
+        if (Current.Kind == TokenKind.Asterisk)
+            return new PointerTypeSyntax(left, Expect(TokenKind.Asterisk));
+
+        return left;
+    }
+
+    private SimpleTypeSyntax ParseSimpleType()
+    {
+        var identifier = ExpectIdentifier();
+        
+        return new SimpleTypeSyntax(identifier);
+    }
+
+    private PredefinedTypeSyntax? ParsePredefinedType()
+    {
+        switch (Current.Kind)
+        {
+            case TokenKind.Object:
+            case TokenKind.String:
+            case TokenKind.Bool:
+            case TokenKind.Byte:
+            case TokenKind.Sbyte:
+            case TokenKind.Char:
+            case TokenKind.Decimal:
+            case TokenKind.Double:
+            case TokenKind.Float:
+            case TokenKind.Int:
+            case TokenKind.Uint:
+            case TokenKind.Long:
+            case TokenKind.Ulong:
+            case TokenKind.Ushort:
+            case TokenKind.Void:
+                return new PredefinedTypeSyntax(Expect(Current.Kind));
+        }
+
+        return null;
     }
 
     private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationKind declarationContext)
