@@ -125,7 +125,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         TypeSyntax? left = ParsePredefinedType();
 
-        left ??= ParseSimpleType();
+        left ??= ParseQualifiedType();
+        
+        if (Current.Kind == TokenKind.Asterisk)
+            return new PointerTypeSyntax(left, Expect(TokenKind.Asterisk));
+
+        return left;
+    }
+
+    private TypeSyntax ParseQualifiedType()
+    {
+        TypeSyntax left = ParseSimpleType();
 
         while (Current.Kind == TokenKind.Dot)
         {
@@ -135,9 +145,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             left = new QualifiedTypeSyntax(left, dot, right);
         }
-
-        if (Current.Kind == TokenKind.Asterisk)
-            return new PointerTypeSyntax(left, Expect(TokenKind.Asterisk));
 
         return left;
     }
@@ -252,7 +259,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private NamespaceDeclarationNode ParseNamespaceDeclaration()
     {
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
-        var name = ExpectIdentifier();
+        var name = ParseQualifiedType();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var usings = ParseUsings(DeclarationKind.Namespace);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);

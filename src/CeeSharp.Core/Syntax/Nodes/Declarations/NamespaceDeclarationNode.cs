@@ -1,10 +1,11 @@
 using System.Collections.Immutable;
+using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
 public record NamespaceDeclarationNode(
     SyntaxToken NamespaceKeyword,
-    SyntaxToken Identifier,
+    TypeSyntax QualifiedName,
     SyntaxToken OpenBrace,
     ImmutableArray<UsingDirectiveNode> Usings,
     ImmutableArray<DeclarationNode> Declarations,
