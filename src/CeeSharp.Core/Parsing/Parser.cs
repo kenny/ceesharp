@@ -752,9 +752,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             DeclarationKind.Namespace => tokenKind.IsModifier() ||
                                          tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
                                              or TokenKind.OpenBracket,
-            DeclarationKind.Class or DeclarationKind.Struct => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
-                                                               tokenKind is TokenKind.Class or TokenKind.Struct
-                                                                   or TokenKind.Identifier or TokenKind.CloseBrace,
+            DeclarationKind.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
+                                    tokenKind is TokenKind.Class or TokenKind.Struct
+                                        or TokenKind.Identifier or TokenKind.CloseBrace,
             DeclarationKind.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                                              tokenKind is TokenKind.Identifier,
             DeclarationKind.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
