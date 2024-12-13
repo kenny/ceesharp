@@ -363,23 +363,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var arguments = ImmutableArray.CreateBuilder<AttributeArgumentNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
-        while (Current.Kind != TokenKind.EndOfFile)
+        while (Current.Kind != TokenKind.CloseParen && Current.Kind != TokenKind.EndOfFile)
         {
             if (arguments.Count > 0)
             {
                 if (isInErrorRecovery) Synchronize(DeclarationKind.AttributeList);
-                
+
                 if (Current.Kind != TokenKind.Comma)
                     break;
 
                 separators.Add(Expect(TokenKind.Comma, ","));
             }
-            
+
             arguments.Add(ParseAttributeArgument());
-            
         }
 
-        var argumentWithCommas = new SeparatedSyntaxList<AttributeArgumentNode>(arguments.ToImmutable(), separators.ToImmutable());
+        var argumentWithCommas =
+            new SeparatedSyntaxList<AttributeArgumentNode>(arguments.ToImmutable(), separators.ToImmutable());
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         return OptionalSyntax.With(new AttributeArgumentListNode(openParen, argumentWithCommas, closeParen));
@@ -400,7 +400,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var assign = Expect(TokenKind.Assign, "=");
-        
+
         return OptionalSyntax.With(new AttributeNamedArgumentNode(identifier, assign));
     }
 
