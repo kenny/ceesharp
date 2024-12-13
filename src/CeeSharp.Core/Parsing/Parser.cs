@@ -32,9 +32,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new CompilationUnitNode(usings, attributes, declarations, endOfFile);
     }
 
-    private SyntaxToken ExpectIdentifier()
+    private SyntaxToken ExpectIdentifier(DeclarationKind declarationContext = DeclarationKind.None)
     {
-        if (!TryExpect(TokenKind.Identifier, out var token))
+        if (!TryExpect(TokenKind.Identifier, out var token, declarationContext))
             diagnostics.ReportError(token.EndTextPosition, "Identifier expected");
 
         return token;
@@ -47,24 +47,36 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return token;
     }
 
+    private OptionalSyntax<SyntaxToken> ExpectIf(TokenKind kind, bool condition, string text,
+        DeclarationKind declarationContext = DeclarationKind.None)
+    {
+        if (condition)
+            return OptionalSyntax.With(Expect(kind, text, declarationContext));
+
+        return ExpectOptional(kind);
+    }
+
     private OptionalSyntax<SyntaxToken> ExpectOptional(TokenKind kind)
     {
-        if (Current.Kind != kind) return OptionalSyntax<SyntaxToken>.None;
+        var current = Current;
+        
+        if (current.Kind != kind)
+            return OptionalSyntax<SyntaxToken>.None;
 
         tokenStream.Advance();
 
-        return OptionalSyntax.With(Current);
+        return OptionalSyntax.With(current);
     }
 
-    private SyntaxToken Expect(TokenKind kind, string text)
+    private SyntaxToken Expect(TokenKind kind, string text, DeclarationKind declarationContext = DeclarationKind.None)
     {
-        if (!TryExpect(kind, out var token))
+        if (!TryExpect(kind, out var token, declarationContext))
             diagnostics.ReportError(Previous.EndPosition, $"{text} expected");
 
         return token;
     }
 
-    private bool TryExpect(TokenKind kind, out SyntaxToken token)
+    private bool TryExpect(TokenKind kind, out SyntaxToken token, DeclarationKind declarationContext = DeclarationKind.None)
     {
         if (Current.Kind == kind)
         {
@@ -92,6 +104,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         };
 
         skippedTokens.Clear();
+        
+        if(isInErrorRecovery && declarationContext != DeclarationKind.None)
+            Synchronize(declarationContext);
 
         return false;
     }
@@ -615,11 +630,50 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var enumKeyword = Expect(TokenKind.Enum, "enum");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var members = ParseEnumMemberDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
         var semicolon = ExpectOptional(TokenKind.Semicolon);
 
-        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, openBrace,
-            ImmutableArray<EnumMemberDeclarationNode>.Empty, closeBrace, semicolon);
+        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, openBrace, members, closeBrace,
+            semicolon);
+    }
+
+    private ImmutableArray<EnumMemberDeclarationNode> ParseEnumMemberDeclarations()
+    {
+        var members = ImmutableArray.CreateBuilder<EnumMemberDeclarationNode>();
+
+        while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
+        {
+            var attributes = ParseAttributes();
+
+            var member = ParseEnumMemberDeclaration(attributes);
+            
+            members.Add(member);
+            
+            if (isInErrorRecovery && IsTokenValidForDeclaration(DeclarationKind.Enum, Current.Kind))
+            {
+                isInErrorRecovery = false;
+                break;
+            }
+
+            if (isInErrorRecovery) Synchronize(DeclarationKind.Enum);
+        }
+
+        return members.ToImmutable();
+    }
+    
+    private EnumMemberDeclarationNode ParseEnumMemberDeclaration(ImmutableArray<AttributeSectionNode> attributes)
+    {
+        var identifier = ExpectIdentifier(DeclarationKind.EnumMember);
+        var assign = ExpectOptional(TokenKind.Assign);
+        var expression = assign.HasValue switch
+        {
+            true => OptionalSyntax.With<ExpressionNode>(new IdentifierExpressionNode(ExpectIdentifier())),
+            false => OptionalSyntax<ExpressionNode>.None
+        };
+        var comma = ExpectIf(TokenKind.Comma, Lookahead.Kind != TokenKind.CloseBrace, ",", DeclarationKind.EnumMember);
+        
+        return new EnumMemberDeclarationNode(attributes, identifier, assign, expression, comma);
     }
 
     private ClassDeclarationNode ParseClassDeclaration(DeclarationKind declarationContext,
@@ -778,6 +832,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             DeclarationKind.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                                              tokenKind is TokenKind.Identifier,
             DeclarationKind.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
+                or TokenKind.CloseBracket
+                or TokenKind.CloseParen,
+            DeclarationKind.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
             _ => false
