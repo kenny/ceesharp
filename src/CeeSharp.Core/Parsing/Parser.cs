@@ -439,6 +439,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseNamespaceDeclaration();
             case TokenKind.Class:
             case TokenKind.Struct:
+            case TokenKind.Enum:
                 return ParseTypeDeclaration(declarationContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery)
