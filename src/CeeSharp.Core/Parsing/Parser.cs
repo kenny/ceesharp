@@ -47,6 +47,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return token;
     }
 
+    private OptionalSyntax<SyntaxToken> ExpectOptional(TokenKind kind)
+    {
+        if (Current.Kind != kind) return OptionalSyntax<SyntaxToken>.None;
+
+        tokenStream.Advance();
+
+        return OptionalSyntax.With(Current);
+    }
 
     private SyntaxToken Expect(TokenKind kind, string text)
     {
@@ -525,6 +533,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         {
             case TokenKind.Class:
             case TokenKind.Struct:
+            case TokenKind.Enum:
                 return ParseTypeDeclaration(declarationContext, attributes, modifiers);
 
             case TokenKind.Identifier when declarationContext != DeclarationKind.Namespace:
@@ -587,11 +596,29 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseClassDeclaration(declarationContext, attributes, modifiers);
             case TokenKind.Struct:
                 return ParseStructDeclaration(declarationContext, attributes, modifiers);
+            case TokenKind.Enum:
+                return ParseEnumDeclaration(declarationContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery) isInErrorRecovery = true;
 
                 return null;
         }
+    }
+
+    private EnumDeclarationNode ParseEnumDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<EnumDeclarationNode>(declarationContext, modifiers);
+
+        var enumKeyword = Expect(TokenKind.Enum, "enum");
+        var identifier = ExpectIdentifier();
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        var semicolon = ExpectOptional(TokenKind.Semicolon);
+
+        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, openBrace,
+            ImmutableArray<EnumMemberDeclarationNode>.Empty, closeBrace, semicolon);
     }
 
     private ClassDeclarationNode ParseClassDeclaration(DeclarationKind declarationContext,
@@ -615,13 +642,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
 
-        var classKeyword = Expect(TokenKind.Struct, "struct");
+        var structKeyword = Expect(TokenKind.Struct, "struct");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations(DeclarationKind.Struct);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new StructDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
+        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
     private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
@@ -742,10 +769,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return declarationKind switch
         {
             DeclarationKind.Namespace => tokenKind.IsModifier() ||
-                                         tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
+                                         tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct or TokenKind.Enum
                                              or TokenKind.OpenBracket,
             DeclarationKind.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
-                                    tokenKind is TokenKind.Class or TokenKind.Struct
+                                    tokenKind is TokenKind.Class or TokenKind.Struct or TokenKind.Enum
                                         or TokenKind.Identifier or TokenKind.CloseBrace,
             DeclarationKind.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                                              tokenKind is TokenKind.Identifier,
