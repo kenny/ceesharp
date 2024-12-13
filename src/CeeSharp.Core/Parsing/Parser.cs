@@ -20,7 +20,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         var usings = ParseUsings(DeclarationKind.Namespace);
-        var attributes = ParseAttributeSections();
+        var attributes = ParseAttributes();
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
@@ -261,7 +261,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new UsingAliasNode(identifier, assign));
     }
 
-    private ImmutableArray<AttributeSectionNode> ParseAttributeSections()
+    private ImmutableArray<AttributeSectionNode> ParseAttributes()
     {
         var attributes = ImmutableArray.CreateBuilder<AttributeSectionNode>();
 
