@@ -20,7 +20,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         var usings = ParseUsings(DeclarationKind.Namespace);
-        var attributes = ParseAttributes();
+        var attributes = ParseAttributes(AttributeContext.Global);
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
@@ -261,38 +261,44 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new UsingAliasNode(identifier, assign));
     }
 
-    private ImmutableArray<AttributeSectionNode> ParseAttributes()
+    private ImmutableArray<AttributeSectionNode> ParseAttributes(AttributeContext attributeContext)
     {
         var attributes = ImmutableArray.CreateBuilder<AttributeSectionNode>();
 
-        while (Current.Kind == TokenKind.OpenBracket) attributes.Add(ParseAttributeSection());
+        while (Current.Kind == TokenKind.OpenBracket) attributes.Add(ParseAttributeSection(attributeContext));
 
         return attributes.ToImmutable();
     }
 
-    private AttributeSectionNode ParseAttributeSection()
+    private AttributeSectionNode ParseAttributeSection(AttributeContext attributeContext)
     {
         var openBracket = Expect(TokenKind.OpenBracket, "[");
-        var target = ParseAttributeTarget();
+        var target = ParseAttributeTarget(attributeContext);
         var attributeList = ParseAttributeList();
         var closeBracket = Expect(TokenKind.CloseBracket, "]");
 
         return new AttributeSectionNode(openBracket, target, attributeList, closeBracket);
     }
 
-    private OptionalSyntax<AttributeTargetNode> ParseAttributeTarget()
+    private OptionalSyntax<AttributeTargetNode> ParseAttributeTarget(AttributeContext attributeContext)
     {
         if (Lookahead.Kind != TokenKind.Colon)
             return OptionalSyntax<AttributeTargetNode>.None;
 
-        var identifier = ParseContextualAttributeTarget(Current.Text, out var isValidTarget) switch
+        var (validToken, validContext) =
+            ParseContextualAttributeTarget(attributeContext, Current.Text, out var targetToken);
+
+        var identifier = targetToken switch
         {
             TokenKind.Unknown => Current,
-            var targetToken => Current with { Kind = targetToken }
+            _ => Current with { Kind = targetToken }
         };
 
-        if (!isValidTarget)
-            diagnostics.ReportWarning(Current.Position, $"'{identifier.Text}' is an invalid attribute target");
+        if (!validToken)
+            diagnostics.ReportWarning(Current.Position, $"'{identifier.Text}' is not a valid attribute target");
+        else if (!validContext)
+            diagnostics.ReportWarning(Current.Position,
+                $"'{identifier.Text}' is not a valid attribute target for this declaration");
 
         tokenStream.Advance();
 
@@ -301,9 +307,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new AttributeTargetNode(identifier, colon));
     }
 
-    private TokenKind ParseContextualAttributeTarget(string text, out bool isValidTarget)
+    private (bool validContext, bool validToken) ParseContextualAttributeTarget(
+        AttributeContext attributeContext, string text, out TokenKind targetToken)
     {
-        var targetKind = text switch
+        targetToken = text switch
         {
             "assembly" => TokenKind.Assembly,
             "field" => TokenKind.Field,
@@ -317,10 +324,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             _ => TokenKind.Unknown
         };
 
-        isValidTarget = targetKind != TokenKind.Unknown;
+        if (targetToken == TokenKind.Unknown)
+            return (false, false);
 
-        return targetKind;
+        return (true, attributeContext switch
+        {
+            AttributeContext.Global => targetToken is TokenKind.Assembly or TokenKind.Module,
+            AttributeContext.Type => targetToken is TokenKind.Type,
+            AttributeContext.Method => targetToken is TokenKind.Method or TokenKind.Return,
+            AttributeContext.Property => targetToken is TokenKind.Property or TokenKind.Return,
+            AttributeContext.Field => targetToken is TokenKind.Field,
+            AttributeContext.Event => targetToken is TokenKind.Event,
+            AttributeContext.Parameter => targetToken is TokenKind.Param,
+            AttributeContext.ReturnValue => targetToken is TokenKind.Return,
+            _ => false
+        });
     }
+
 
     private SeparatedSyntaxList<AttributeNode> ParseAttributeList()
     {
@@ -359,7 +379,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             return OptionalSyntax<AttributeArgumentListNode>.None;
 
         var openParen = Expect(TokenKind.OpenParen, "(");
-        
+
         var arguments = ImmutableArray.CreateBuilder<AttributeArgumentNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
@@ -727,28 +747,32 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
     {
-        switch (declarationKind)
+        return declarationKind switch
         {
-            case DeclarationKind.Namespace:
-                return tokenKind.IsModifier() ||
-                       tokenKind is TokenKind.Namespace
-                           or TokenKind.Class
-                           or TokenKind.Struct
-                           or TokenKind.OpenBracket;
-            case DeclarationKind.Class:
-            case DeclarationKind.Struct:
-                return tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
-                       tokenKind is TokenKind.Class
-                           or TokenKind.Struct
-                           or TokenKind.Identifier
-                           or TokenKind.CloseBrace;
-            case DeclarationKind.ParameterList:
-                return tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
-                       tokenKind is TokenKind.Identifier;
-            case DeclarationKind.AttributeList:
-                return tokenKind is TokenKind.Identifier or TokenKind.Comma or TokenKind.CloseParen;
-            default:
-                return false;
-        }
+            DeclarationKind.Namespace => tokenKind.IsModifier() ||
+                                         tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
+                                             or TokenKind.OpenBracket,
+            DeclarationKind.Class or DeclarationKind.Struct => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
+                                                               tokenKind is TokenKind.Class or TokenKind.Struct
+                                                                   or TokenKind.Identifier or TokenKind.CloseBrace,
+            DeclarationKind.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
+                                             tokenKind is TokenKind.Identifier,
+            DeclarationKind.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
+                or TokenKind.CloseBracket
+                or TokenKind.CloseParen,
+            _ => false
+        };
+    }
+
+    private enum AttributeContext
+    {
+        Global,
+        Type,
+        Method,
+        Property,
+        Field,
+        Event,
+        Parameter,
+        ReturnValue
     }
 }
