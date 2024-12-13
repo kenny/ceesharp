@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CeeSharp.Core.Syntax;
 using CeeSharp.Core.Syntax.Nodes;
 using CeeSharp.Core.Syntax.Nodes.Declarations;
+using CeeSharp.Core.Syntax.Nodes.Expressions;
 using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Parsing;
@@ -19,6 +20,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         var usings = ParseUsings(DeclarationKind.Namespace);
+        var attributes = ParseAttributeSections();
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
@@ -27,7 +29,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         isInErrorRecovery = false;
         skippedTokens.Clear();
 
-        return new CompilationUnitNode(usings, declarations, endOfFile);
+        return new CompilationUnitNode(usings, attributes, declarations, endOfFile);
     }
 
     private SyntaxToken ExpectIdentifier()
@@ -257,6 +259,149 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var assign = Expect(TokenKind.Assign, "=");
 
         return OptionalSyntax.With(new UsingAliasNode(identifier, assign));
+    }
+
+    private ImmutableArray<AttributeSectionNode> ParseAttributeSections()
+    {
+        var attributes = ImmutableArray.CreateBuilder<AttributeSectionNode>();
+
+        while (Current.Kind == TokenKind.OpenBracket) attributes.Add(ParseAttributeSection());
+
+        return attributes.ToImmutable();
+    }
+
+    private AttributeSectionNode ParseAttributeSection()
+    {
+        var openBracket = Expect(TokenKind.OpenBracket, "[");
+        var target = ParseAttributeTarget();
+        var attributeList = ParseAttributeList();
+        var closeBracket = Expect(TokenKind.CloseBracket, "]");
+
+        return new AttributeSectionNode(openBracket, target, attributeList, closeBracket);
+    }
+
+    private OptionalSyntax<AttributeTargetNode> ParseAttributeTarget()
+    {
+        if (Lookahead.Kind != TokenKind.Colon)
+            return OptionalSyntax<AttributeTargetNode>.None;
+
+        var identifier = ParseContextualAttributeTarget(Current.Text, out var isValidTarget) switch
+        {
+            TokenKind.Unknown => Current,
+            var targetToken => Current with { Kind = targetToken }
+        };
+
+        if (!isValidTarget)
+            diagnostics.ReportWarning(Current.Position, $"'{identifier.Text}' is an invalid attribute target");
+
+        tokenStream.Advance();
+
+        var colon = Expect(TokenKind.Colon, ":");
+
+        return OptionalSyntax.With(new AttributeTargetNode(identifier, colon));
+    }
+
+    private TokenKind ParseContextualAttributeTarget(string text, out bool isValidTarget)
+    {
+        var targetKind = text switch
+        {
+            "assembly" => TokenKind.Assembly,
+            "field" => TokenKind.Field,
+            "event" => TokenKind.Event,
+            "method" => TokenKind.Method,
+            "module" => TokenKind.Module,
+            "param" => TokenKind.Param,
+            "property" => TokenKind.Property,
+            "return" => TokenKind.Return,
+            "type" => TokenKind.Type,
+            _ => TokenKind.Unknown
+        };
+
+        isValidTarget = targetKind != TokenKind.Unknown;
+
+        return targetKind;
+    }
+
+    private SeparatedSyntaxList<AttributeNode> ParseAttributeList()
+    {
+        var attributes = ImmutableArray.CreateBuilder<AttributeNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        while (Current.Kind != TokenKind.EndOfFile)
+        {
+            if (attributes.Count > 0)
+            {
+                if (Current.Kind != TokenKind.Comma)
+                    break;
+
+                separators.Add(Expect(TokenKind.Comma, ","));
+
+                if (isInErrorRecovery) Synchronize(DeclarationKind.AttributeList);
+            }
+
+            attributes.Add(ParseAttribute());
+        }
+
+        return new SeparatedSyntaxList<AttributeNode>(attributes.ToImmutable(), separators.ToImmutable());
+    }
+
+    private AttributeNode ParseAttribute()
+    {
+        var name = ParseQualifiedTypeExact();
+        var arguments = ParseAttributeArguments();
+
+        return new AttributeNode(name, arguments);
+    }
+
+    private OptionalSyntax<AttributeArgumentListNode> ParseAttributeArguments()
+    {
+        if (Current.Kind != TokenKind.OpenParen)
+            return OptionalSyntax<AttributeArgumentListNode>.None;
+
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        
+        var arguments = ImmutableArray.CreateBuilder<AttributeArgumentNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        while (Current.Kind != TokenKind.EndOfFile)
+        {
+            if (arguments.Count > 0)
+            {
+                if (isInErrorRecovery) Synchronize(DeclarationKind.AttributeList);
+                
+                if (Current.Kind != TokenKind.Comma)
+                    break;
+
+                separators.Add(Expect(TokenKind.Comma, ","));
+            }
+            
+            arguments.Add(ParseAttributeArgument());
+            
+        }
+
+        var argumentWithCommas = new SeparatedSyntaxList<AttributeArgumentNode>(arguments.ToImmutable(), separators.ToImmutable());
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return OptionalSyntax.With(new AttributeArgumentListNode(openParen, argumentWithCommas, closeParen));
+    }
+
+    private AttributeArgumentNode ParseAttributeArgument()
+    {
+        var named = ParseAttributeNamedArgument();
+        var expression = new IdentifierExpressionNode(ExpectIdentifier());
+
+        return new AttributeArgumentNode(named, expression);
+    }
+
+    private OptionalSyntax<AttributeNamedArgumentNode> ParseAttributeNamedArgument()
+    {
+        if (Lookahead.Kind != TokenKind.Assign)
+            return OptionalSyntax<AttributeNamedArgumentNode>.None;
+
+        var identifier = ExpectIdentifier();
+        var assign = Expect(TokenKind.Assign, "=");
+        
+        return OptionalSyntax.With(new AttributeNamedArgumentNode(identifier, assign));
     }
 
     private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationKind declarationContext)
@@ -588,7 +733,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return tokenKind.IsModifier() ||
                        tokenKind is TokenKind.Namespace
                            or TokenKind.Class
-                           or TokenKind.Struct;
+                           or TokenKind.Struct
+                           or TokenKind.OpenBracket;
             case DeclarationKind.Class:
             case DeclarationKind.Struct:
                 return tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
@@ -599,6 +745,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case DeclarationKind.ParameterList:
                 return tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                        tokenKind is TokenKind.Identifier;
+            case DeclarationKind.AttributeList:
+                return tokenKind is TokenKind.Identifier or TokenKind.Comma or TokenKind.CloseParen;
             default:
                 return false;
         }

@@ -5,6 +5,7 @@ namespace CeeSharp.Core.Syntax.Nodes;
 
 public record CompilationUnitNode(
     ImmutableArray<UsingDirectiveNode> Usings,
+    ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken EndOfFileToken) : SyntaxNode
 {
