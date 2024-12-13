@@ -20,7 +20,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         var usings = ParseUsings(DeclarationKind.Namespace);
-        var attributes = ParseAttributes(AttributeContext.Global);
+        var attributes = ParseAttributes();
         var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
@@ -261,32 +261,31 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new UsingAliasNode(identifier, assign));
     }
 
-    private ImmutableArray<AttributeSectionNode> ParseAttributes(AttributeContext attributeContext)
+    private ImmutableArray<AttributeSectionNode> ParseAttributes()
     {
         var attributes = ImmutableArray.CreateBuilder<AttributeSectionNode>();
 
-        while (Current.Kind == TokenKind.OpenBracket) attributes.Add(ParseAttributeSection(attributeContext));
+        while (Current.Kind == TokenKind.OpenBracket) attributes.Add(ParseAttributeSection());
 
         return attributes.ToImmutable();
     }
 
-    private AttributeSectionNode ParseAttributeSection(AttributeContext attributeContext)
+    private AttributeSectionNode ParseAttributeSection()
     {
         var openBracket = Expect(TokenKind.OpenBracket, "[");
-        var target = ParseAttributeTarget(attributeContext);
+        var target = ParseAttributeTarget();
         var attributeList = ParseAttributeList();
         var closeBracket = Expect(TokenKind.CloseBracket, "]");
 
         return new AttributeSectionNode(openBracket, target, attributeList, closeBracket);
     }
 
-    private OptionalSyntax<AttributeTargetNode> ParseAttributeTarget(AttributeContext attributeContext)
+    private OptionalSyntax<AttributeTargetNode> ParseAttributeTarget()
     {
         if (Lookahead.Kind != TokenKind.Colon)
             return OptionalSyntax<AttributeTargetNode>.None;
 
-        var (validToken, validContext) =
-            ParseContextualAttributeTarget(attributeContext, Current.Text, out var targetToken);
+        var validTarget = ParseContextualAttributeTarget(Current.Text, out var targetToken);
 
         var identifier = targetToken switch
         {
@@ -294,11 +293,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             _ => Current with { Kind = targetToken }
         };
 
-        if (!validToken)
+        if (!validTarget)
             diagnostics.ReportWarning(Current.Position, $"'{identifier.Text}' is not a valid attribute target");
-        else if (!validContext)
-            diagnostics.ReportWarning(Current.Position,
-                $"'{identifier.Text}' is not a valid attribute target for this declaration");
 
         tokenStream.Advance();
 
@@ -307,8 +303,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new AttributeTargetNode(identifier, colon));
     }
 
-    private (bool validContext, bool validToken) ParseContextualAttributeTarget(
-        AttributeContext attributeContext, string text, out TokenKind targetToken)
+    private bool ParseContextualAttributeTarget(string text, out TokenKind targetToken)
     {
         targetToken = text switch
         {
@@ -324,21 +319,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             _ => TokenKind.Unknown
         };
 
-        if (targetToken == TokenKind.Unknown)
-            return (false, false);
-
-        return (true, attributeContext switch
-        {
-            AttributeContext.Global => targetToken is TokenKind.Assembly or TokenKind.Module,
-            AttributeContext.Type => targetToken is TokenKind.Type,
-            AttributeContext.Method => targetToken is TokenKind.Method or TokenKind.Return,
-            AttributeContext.Property => targetToken is TokenKind.Property or TokenKind.Return,
-            AttributeContext.Field => targetToken is TokenKind.Field,
-            AttributeContext.Event => targetToken is TokenKind.Event,
-            AttributeContext.Parameter => targetToken is TokenKind.Param,
-            AttributeContext.ReturnValue => targetToken is TokenKind.Return,
-            _ => false
-        });
+        return targetToken != TokenKind.Unknown;
     }
 
 
@@ -762,17 +743,5 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 or TokenKind.CloseParen,
             _ => false
         };
-    }
-
-    private enum AttributeContext
-    {
-        Global,
-        Type,
-        Method,
-        Property,
-        Field,
-        Event,
-        Parameter,
-        ReturnValue
     }
 }
