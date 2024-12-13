@@ -4,6 +4,7 @@ using CeeSharp.Core.Syntax.Types;
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
 public record MethodDeclarationNode(
+    ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     TypeSyntax ReturnType,
     SyntaxToken Identifier,

@@ -422,6 +422,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationKind declarationContext)
     {
+        var attributes = ParseAttributes();
         var modifiers = ParseModifiers();
 
         switch (Current.Kind)
@@ -430,7 +431,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseNamespaceDeclaration();
             case TokenKind.Class:
             case TokenKind.Struct:
-                return ParseTypeDeclaration(declarationContext, modifiers);
+                return ParseTypeDeclaration(declarationContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery)
                 {
@@ -499,8 +500,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
+            var attributes = ParseAttributes();
             var modifiers = ParseModifiers();
-            var declaration = ParseMemberDeclaration(declarationContext, modifiers);
+            var declaration = ParseMemberDeclaration(declarationContext, attributes, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
             if (isInErrorRecovery && IsTokenValidForDeclaration(declarationContext, Current.Kind))
@@ -516,13 +518,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private DeclarationNode? ParseMemberDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         switch (Current.Kind)
         {
             case TokenKind.Class:
             case TokenKind.Struct:
-                return ParseTypeDeclaration(declarationContext, modifiers);
+                return ParseTypeDeclaration(declarationContext, attributes, modifiers);
 
             case TokenKind.Identifier when declarationContext != DeclarationKind.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
@@ -530,14 +533,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     var type = ParseType();
 
                     if (!isInErrorRecovery)
-                        return ParseMethodDeclaration(declarationContext, modifiers, type!);
+                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
 
                     isInErrorRecovery = false;
 
-                    return HandleIncompleteMember(declarationContext, modifiers, type!);
+                    return HandleIncompleteMember(declarationContext, attributes, modifiers, type!);
                 }
 
-                return ParseConstructorDeclaration(declarationContext, modifiers);
+                return ParseConstructorDeclaration(declarationContext, attributes, modifiers);
 
             case TokenKind.Void:
             case TokenKind.Int:
@@ -552,13 +555,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Decimal:
             case TokenKind.Object:
                 var predefinedType = ParsePredefinedType();
-                return ParseMethodDeclaration(declarationContext, modifiers, predefinedType!);
+                return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
             default:
-                return HandleIncompleteMember(declarationContext, modifiers);
+                return HandleIncompleteMember(declarationContext, attributes, modifiers);
         }
     }
 
     private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, params SyntaxElement[] elements)
     {
         if (!isInErrorRecovery)
@@ -570,18 +574,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         Synchronize(declarationContext);
 
-        return new IncompleteMemberDeclarationNode(modifiers.As<SyntaxElement>().AddRange(elements));
+        return new IncompleteMemberDeclarationNode(attributes, modifiers.As<SyntaxElement>().AddRange(elements));
     }
 
     private DeclarationNode? ParseTypeDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         switch (Current.Kind)
         {
             case TokenKind.Class:
-                return ParseClassDeclaration(declarationContext, modifiers);
+                return ParseClassDeclaration(declarationContext, attributes, modifiers);
             case TokenKind.Struct:
-                return ParseStructDeclaration(declarationContext, modifiers);
+                return ParseStructDeclaration(declarationContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery) isInErrorRecovery = true;
 
@@ -590,6 +595,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private ClassDeclarationNode ParseClassDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
@@ -597,13 +603,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var declarations = ParseTypeDeclarations(DeclarationKind.Class);
+        var declarations = ParseTypeDeclarations(DeclarationKind.Type);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new ClassDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
+        return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
     private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
@@ -614,10 +621,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var declarations = ParseTypeDeclarations(DeclarationKind.Struct);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new StructDeclarationNode(modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
+        return new StructDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
     }
 
     private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType)
     {
         ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
@@ -636,6 +644,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         if (isInErrorRecovery) isInErrorRecovery = false;
 
         return new MethodDeclarationNode(
+            attributes,
             modifiers,
             returnType,
             identifier,
@@ -646,6 +655,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private ConstructorDeclarationNode ParseConstructorDeclaration(DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
@@ -664,6 +674,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         if (isInErrorRecovery) isInErrorRecovery = false;
 
         return new ConstructorDeclarationNode(
+            attributes,
             modifiers,
             identifier,
             openParen,

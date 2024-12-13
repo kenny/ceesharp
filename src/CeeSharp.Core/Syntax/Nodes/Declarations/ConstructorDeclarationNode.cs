@@ -4,6 +4,7 @@ using CeeSharp.Core.Syntax.Types;
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
 public record ConstructorDeclarationNode(
+    ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken Identifier,
     SyntaxToken OpenParen,

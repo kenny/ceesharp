@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
 public record StructDeclarationNode(
+    ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken StructKeyword,
     SyntaxToken Identifier,
