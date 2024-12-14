@@ -558,9 +558,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     var type = ParseType();
 
                     if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
-                    {
                         return ParseFieldDeclaration(declarationContext, attributes, modifiers, type!);
-                    }
                     
                     if (!isInErrorRecovery)
                         return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
@@ -579,9 +577,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var predefinedType = ParsePredefinedType();
         
         if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
-        {
             return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-        }
         
         return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
     }
