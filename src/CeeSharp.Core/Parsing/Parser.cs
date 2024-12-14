@@ -566,24 +566,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 }
 
                 return ParseConstructorDeclaration(declarationContext, attributes, modifiers);
-
-            case TokenKind.Void:
-            case TokenKind.Int:
-            case TokenKind.String:
-            case TokenKind.Bool:
-            case TokenKind.Double:
-            case TokenKind.Float:
-            case TokenKind.Long:
-            case TokenKind.Short:
-            case TokenKind.Byte:
-            case TokenKind.Char:
-            case TokenKind.Decimal:
-            case TokenKind.Object:
-                var predefinedType = ParsePredefinedType();
-                return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-            default:
-                return HandleIncompleteMember(declarationContext, attributes, modifiers);
         }
+
+        if (!Current.Kind.IsPredefinedType())
+            return HandleIncompleteMember(declarationContext, attributes, modifiers);
+        
+        var predefinedType = ParsePredefinedType();
+        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
     }
 
     private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
