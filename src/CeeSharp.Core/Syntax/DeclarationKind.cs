@@ -8,10 +8,11 @@ public enum DeclarationKind
     Struct = 1 << 2,
     Enum = 1 << 3,
     Method = 1 << 4,
-    Constructor = 1 << 5,
-    EnumMember = 1 << 6,
-    ParameterList = 1 << 7,
-    AttributeList = 1 << 8,
+    Field = 1 << 5,
+    Constructor = 1 << 6,
+    EnumMember = 1 << 7,
+    ParameterList = 1 << 8,
+    AttributeList = 1 << 9,
 
     Type = Class | Struct | Enum
 }

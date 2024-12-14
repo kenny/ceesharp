@@ -557,6 +557,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 {
                     var type = ParseType();
 
+                    if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
+                    {
+                        return ParseFieldDeclaration(declarationContext, attributes, modifiers, type!);
+                    }
+                    
                     if (!isInErrorRecovery)
                         return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
 
@@ -572,9 +577,15 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             return HandleIncompleteMember(declarationContext, attributes, modifiers);
         
         var predefinedType = ParsePredefinedType();
+        
+        if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
+        {
+            return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+        }
+        
         return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
     }
-
+    
     private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, params SyntaxElement[] elements)
@@ -754,6 +765,52 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             blockOrSemicolon);
     }
 
+    private FieldDeclarationNode ParseFieldDeclaration(
+        DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers,
+        TypeSyntax type)
+    {
+        var declarators = ImmutableArray.CreateBuilder<VariableDeclaratorNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        declarators.Add(ParseVariableDeclarator());
+
+        while (Current.Kind == TokenKind.Comma)
+        {
+            var comma = Expect(TokenKind.Comma);
+
+            declarators.Add(ParseVariableDeclarator());
+            separators.Add(comma);
+        }
+
+        var variableDeclarators =
+            new SeparatedSyntaxList<VariableDeclaratorNode>(declarators.ToImmutable(), separators.ToImmutable());
+        
+        var semicolon = Expect(TokenKind.Semicolon);
+
+        return new FieldDeclarationNode(
+            attributes,
+            modifiers,
+            type,
+            variableDeclarators,
+            semicolon);
+    }
+
+    private VariableDeclaratorNode ParseVariableDeclarator()
+    {
+        var identifier = ExpectIdentifier();
+
+        var assign = ExpectOptional(TokenKind.Assign);
+
+        var initializer = assign.HasValue switch
+        {
+            true => OptionalSyntax.With<ExpressionNode>(new IdentifierExpressionNode(ExpectIdentifier())),
+            false => OptionalSyntax<ExpressionNode>.None
+        };
+        return new VariableDeclaratorNode(identifier, assign, initializer);
+    }
+    
     private BlockNode ParseMethodBody()
     {
         var openBrace = Expect(TokenKind.OpenBrace, "{");
