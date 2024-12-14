@@ -767,6 +767,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         ImmutableArray<SyntaxToken> modifiers,
         TypeSyntax type)
     {
+        ValidateModifiers<FieldDeclarationNode>(declarationContext, modifiers);
+        
         var declarators = ImmutableArray.CreateBuilder<VariableDeclaratorNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
