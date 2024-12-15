@@ -19,9 +19,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     public CompilationUnitNode Parse()
     {
-        var usings = ParseUsings(DeclarationKind.Namespace);
+        var usings = ParseUsings(ParserContext.Namespace);
         var attributes = ParseAttributes();
-        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
+        var declarations = ParseNamespaceOrTypeDeclarations(ParserContext.Namespace);
 
         if (!TryExpect(TokenKind.EndOfFile, out var endOfFile))
             SkipUntilEnd();
@@ -32,9 +32,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new CompilationUnitNode(usings, attributes, declarations, endOfFile);
     }
 
-    private SyntaxToken ExpectIdentifier(DeclarationKind declarationContext = DeclarationKind.None)
+    private SyntaxToken ExpectIdentifier(ParserContext parserContext = ParserContext.None)
     {
-        if (!TryExpect(TokenKind.Identifier, out var token, declarationContext))
+        if (!TryExpect(TokenKind.Identifier, out var token, parserContext))
             diagnostics.ReportError(token.EndTextPosition, "Identifier expected");
 
         return token;
@@ -48,10 +48,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private OptionalSyntax<SyntaxToken> ExpectIf(TokenKind kind, bool condition, string text,
-        DeclarationKind declarationContext = DeclarationKind.None)
+        ParserContext parserContext = ParserContext.None)
     {
         if (condition)
-            return OptionalSyntax.With(Expect(kind, text, declarationContext));
+            return OptionalSyntax.With(Expect(kind, text, parserContext));
 
         return ExpectOptional(kind);
     }
@@ -68,16 +68,16 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(current);
     }
 
-    private SyntaxToken Expect(TokenKind kind, string text, DeclarationKind declarationContext = DeclarationKind.None)
+    private SyntaxToken Expect(TokenKind kind, string text, ParserContext parserContext = ParserContext.None)
     {
-        if (!TryExpect(kind, out var token, declarationContext))
+        if (!TryExpect(kind, out var token, parserContext))
             diagnostics.ReportError(Previous.EndPosition, $"{text} expected");
 
         return token;
     }
 
     private bool TryExpect(TokenKind kind, out SyntaxToken token,
-        DeclarationKind declarationContext = DeclarationKind.None)
+        ParserContext parserContext = ParserContext.None)
     {
         if (Current.Kind == kind)
         {
@@ -106,8 +106,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         skippedTokens.Clear();
 
-        if (isInErrorRecovery && declarationContext != DeclarationKind.None)
-            Synchronize(declarationContext);
+        if (isInErrorRecovery && parserContext != ParserContext.None)
+            Synchronize(parserContext);
 
         return false;
     }
@@ -120,11 +120,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         isInErrorRecovery = false;
     }
 
-    private void Synchronize(DeclarationKind context, params TokenKind[] synchronizingTokens)
+    private void Synchronize(ParserContext parserContext, params TokenKind[] synchronizingTokens)
     {
         while (Current.Kind != TokenKind.EndOfFile)
         {
-            if ((context != DeclarationKind.None && IsTokenValidForDeclaration(context, Current.Kind)) ||
+            if ((parserContext != ParserContext.None && IsTokenValidForDeclaration(parserContext, Current.Kind)) ||
                 synchronizingTokens.Contains(Current.Kind))
             {
                 isInErrorRecovery = false;
@@ -236,7 +236,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return null;
     }
 
-    private ImmutableArray<UsingDirectiveNode> ParseUsings(DeclarationKind declarationContext)
+    private ImmutableArray<UsingDirectiveNode> ParseUsings(ParserContext parserContext)
     {
         var usings = ImmutableArray.CreateBuilder<UsingDirectiveNode>();
 
@@ -249,7 +249,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             }
             else
             {
-                if (IsTokenValidForDeclaration(declarationContext, Current.Kind))
+                if (IsTokenValidForDeclaration(parserContext, Current.Kind))
                     break;
 
                 diagnostics.ReportError(Current.Position,
@@ -258,7 +258,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 isInErrorRecovery = true;
             }
 
-            if (isInErrorRecovery) Synchronize(declarationContext, TokenKind.Using);
+            if (isInErrorRecovery) Synchronize(parserContext, TokenKind.Using);
         }
 
         return usings.ToImmutable();
@@ -361,7 +361,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                 separators.Add(Expect(TokenKind.Comma, ","));
 
-                if (isInErrorRecovery) Synchronize(DeclarationKind.AttributeList);
+                if (isInErrorRecovery) Synchronize(ParserContext.AttributeList);
             }
 
             attributes.Add(ParseAttribute());
@@ -392,7 +392,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         {
             if (arguments.Count > 0)
             {
-                if (isInErrorRecovery) Synchronize(DeclarationKind.AttributeList);
+                if (isInErrorRecovery) Synchronize(ParserContext.AttributeList);
 
                 if (Current.Kind != TokenKind.Comma)
                     break;
@@ -429,22 +429,22 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return OptionalSyntax.With(new AttributeNamedArgumentNode(identifier, assign));
     }
 
-    private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(DeclarationKind declarationContext)
+    private ImmutableArray<DeclarationNode> ParseNamespaceOrTypeDeclarations(ParserContext parserContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
         while (Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
         {
-            var declaration = ParseNamespaceOrTypeDeclaration(declarationContext);
+            var declaration = ParseNamespaceOrTypeDeclaration(parserContext);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery) Synchronize(declarationContext);
+            if (isInErrorRecovery) Synchronize(parserContext);
         }
 
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseNamespaceOrTypeDeclaration(DeclarationKind declarationContext)
+    private DeclarationNode? ParseNamespaceOrTypeDeclaration(ParserContext parserContext)
     {
         var attributes = ParseAttributes();
         var modifiers = ParseModifiers();
@@ -456,7 +456,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Class:
             case TokenKind.Struct:
             case TokenKind.Enum:
-                return ParseTypeDeclaration(declarationContext, attributes, modifiers);
+                return ParseTypeDeclaration(parserContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery)
                 {
@@ -474,11 +474,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var namespaceKeyword = Expect(TokenKind.Namespace, "namespace");
         var name = ParseQualifiedTypeExact();
 
-        if (isInErrorRecovery) Synchronize(DeclarationKind.Namespace);
+        if (isInErrorRecovery) Synchronize(ParserContext.Namespace);
 
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var usings = ParseUsings(DeclarationKind.Namespace);
-        var declarations = ParseNamespaceOrTypeDeclarations(DeclarationKind.Namespace);
+        var usings = ParseUsings(ParserContext.Namespace);
+        var declarations = ParseNamespaceOrTypeDeclarations(ParserContext.Namespace);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace);
@@ -497,7 +497,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return modifiers.ToImmutable();
     }
 
-    private void ValidateModifiers<TNode>(DeclarationKind declarationContext, ImmutableArray<SyntaxToken> modifiers)
+    private void ValidateModifiers<TNode>(ParserContext parserContext, ImmutableArray<SyntaxToken> modifiers)
         where TNode : IMemberNode
     {
         var seenModifiers = new HashSet<TokenKind>();
@@ -513,13 +513,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             if (!seenModifiers.Add(modifier.Kind))
                 continue;
 
-            if (!TNode.IsModifierValid(declarationContext, modifier.Kind))
+            if (!TNode.IsModifierValid(parserContext, modifier.Kind))
                 diagnostics.ReportError(modifier.Position,
                     $"The modifier '{modifier.Text}' is not valid for this item");
         }
     }
 
-    private ImmutableArray<DeclarationNode> ParseTypeDeclarations(DeclarationKind declarationContext)
+    private ImmutableArray<DeclarationNode> ParseTypeDeclarations(ParserContext parserContext)
     {
         var declarations = ImmutableArray.CreateBuilder<DeclarationNode>();
 
@@ -527,25 +527,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         {
             var attributes = ParseAttributes();
             var modifiers = ParseModifiers();
-            var declaration = ParseMemberDeclaration(declarationContext, attributes, modifiers);
+            var declaration = ParseMemberDeclaration(parserContext, attributes, modifiers);
             if (declaration != null) declarations.Add(declaration);
 
-            if (isInErrorRecovery && IsTokenValidForDeclaration(declarationContext, Current.Kind))
+            if (isInErrorRecovery && IsTokenValidForDeclaration(parserContext, Current.Kind))
             {
                 isInErrorRecovery = false;
 
                 // Do not stop processing if we're in the same context
-                if (declarationContext != DeclarationKind.Type)
+                if (parserContext != ParserContext.Type)
                     break;
             }
 
-            if (isInErrorRecovery) Synchronize(declarationContext);
+            if (isInErrorRecovery) Synchronize(parserContext);
         }
 
         return declarations.ToImmutable();
     }
 
-    private DeclarationNode? ParseMemberDeclaration(DeclarationKind declarationContext,
+    private DeclarationNode? ParseMemberDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
@@ -554,19 +554,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Class:
             case TokenKind.Struct:
             case TokenKind.Enum:
-                return ParseTypeDeclaration(declarationContext, attributes, modifiers);
+                return ParseTypeDeclaration(parserContext, attributes, modifiers);
 
-            case TokenKind.Identifier when declarationContext != DeclarationKind.Namespace:
+            case TokenKind.Identifier when parserContext != ParserContext.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
                     var type = ParseType();
 
                     if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
-                        return ParseFieldDeclaration(declarationContext, attributes, modifiers, type!);
+                        return ParseFieldDeclaration(parserContext, attributes, modifiers, type!);
 
                     var explicitInterface = Lookahead.Kind switch
                     {
-                        TokenKind.Dot => ParseExplicitInterface(declarationContext),
+                        TokenKind.Dot => ParseExplicitInterface(parserContext),
                         _ => OptionalSyntax<ExplicitInterfaceNode>.None
                     };
 
@@ -574,42 +574,42 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                         switch (Lookahead.Kind)
                         {
                             case TokenKind.OpenParen:
-                                return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!,
+                                return ParseMethodDeclaration(parserContext, attributes, modifiers, type!,
                                     explicitInterface);
                             case TokenKind.OpenBrace:
-                                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, type!,
+                                return ParsePropertyDeclaration(parserContext, attributes, modifiers, type!,
                                     explicitInterface);
                         }
 
                     isInErrorRecovery = false;
 
-                    return HandleIncompleteMember(declarationContext, attributes, modifiers, type!);
+                    return HandleIncompleteMember(parserContext, attributes, modifiers, type!);
                 }
 
-                return ParseConstructorDeclaration(declarationContext, attributes, modifiers);
+                return ParseConstructorDeclaration(parserContext, attributes, modifiers);
             default:
             {
                 if (!Current.Kind.IsPredefinedType())
-                    return HandleIncompleteMember(declarationContext, attributes, modifiers);
+                    return HandleIncompleteMember(parserContext, attributes, modifiers);
 
                 var predefinedType = ParsePredefinedType();
 
                 if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
-                    return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+                    return ParseFieldDeclaration(parserContext, attributes, modifiers, predefinedType!);
 
                 var explicitInterface = Lookahead.Kind switch
                 {
-                    TokenKind.Dot => ParseExplicitInterface(declarationContext),
+                    TokenKind.Dot => ParseExplicitInterface(parserContext),
                     _ => OptionalSyntax<ExplicitInterfaceNode>.None
                 };
 
                 switch (Lookahead.Kind)
                 {
                     case TokenKind.OpenParen:
-                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!,
+                        return ParseMethodDeclaration(parserContext, attributes, modifiers, predefinedType!,
                             explicitInterface);
                     case TokenKind.OpenBrace:
-                        return ParsePropertyDeclaration(declarationContext, attributes, modifiers, predefinedType!,
+                        return ParsePropertyDeclaration(parserContext, attributes, modifiers, predefinedType!,
                             explicitInterface);
                 }
 
@@ -618,7 +618,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
+    private DeclarationNode HandleIncompleteMember(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, params SyntaxElement[] elements)
     {
@@ -629,23 +629,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             isInErrorRecovery = true;
         }
 
-        Synchronize(declarationContext);
+        Synchronize(parserContext);
 
         return new IncompleteMemberDeclarationNode(attributes, modifiers.As<SyntaxElement>().AddRange(elements));
     }
 
-    private DeclarationNode? ParseTypeDeclaration(DeclarationKind declarationContext,
+    private DeclarationNode? ParseTypeDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
         switch (Current.Kind)
         {
             case TokenKind.Class:
-                return ParseClassDeclaration(declarationContext, attributes, modifiers);
+                return ParseClassDeclaration(parserContext, attributes, modifiers);
             case TokenKind.Struct:
-                return ParseStructDeclaration(declarationContext, attributes, modifiers);
+                return ParseStructDeclaration(parserContext, attributes, modifiers);
             case TokenKind.Enum:
-                return ParseEnumDeclaration(declarationContext, attributes, modifiers);
+                return ParseEnumDeclaration(parserContext, attributes, modifiers);
             default:
                 if (!isInErrorRecovery) isInErrorRecovery = true;
 
@@ -653,11 +653,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
     }
 
-    private EnumDeclarationNode ParseEnumDeclaration(DeclarationKind declarationContext,
+    private EnumDeclarationNode ParseEnumDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
-        ValidateModifiers<EnumDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<EnumDeclarationNode>(parserContext, modifiers);
 
         var enumKeyword = Expect(TokenKind.Enum, "enum");
         var identifier = ExpectIdentifier();
@@ -682,13 +682,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             members.Add(member);
 
-            if (isInErrorRecovery && IsTokenValidForDeclaration(DeclarationKind.Enum, Current.Kind))
+            if (isInErrorRecovery && IsTokenValidForDeclaration(ParserContext.Type, Current.Kind))
             {
                 isInErrorRecovery = false;
                 break;
             }
 
-            if (isInErrorRecovery) Synchronize(DeclarationKind.Enum);
+            if (isInErrorRecovery) Synchronize(ParserContext.Type);
         }
 
         return members.ToImmutable();
@@ -696,56 +696,56 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private EnumMemberDeclarationNode ParseEnumMemberDeclaration(ImmutableArray<AttributeSectionNode> attributes)
     {
-        var identifier = ExpectIdentifier(DeclarationKind.EnumMember);
+        var identifier = ExpectIdentifier(ParserContext.EnumMember);
         var assign = ExpectOptional(TokenKind.Assign);
         var expression = assign.HasValue switch
         {
             true => OptionalSyntax.With<ExpressionNode>(new IdentifierExpressionNode(ExpectIdentifier())),
             false => OptionalSyntax<ExpressionNode>.None
         };
-        var comma = ExpectIf(TokenKind.Comma, Lookahead.Kind != TokenKind.CloseBrace, ",", DeclarationKind.EnumMember);
+        var comma = ExpectIf(TokenKind.Comma, Lookahead.Kind != TokenKind.CloseBrace, ",", ParserContext.EnumMember);
 
         return new EnumMemberDeclarationNode(attributes, identifier, assign, expression, comma);
     }
 
-    private ClassDeclarationNode ParseClassDeclaration(DeclarationKind declarationContext,
+    private ClassDeclarationNode ParseClassDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
-        ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<ClassDeclarationNode>(parserContext, modifiers);
 
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var declarations = ParseTypeDeclarations(DeclarationKind.Type);
+        var declarations = ParseTypeDeclarations(ParserContext.Type);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations,
             closeBrace);
     }
 
-    private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
+    private StructDeclarationNode ParseStructDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
-        ValidateModifiers<ClassDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<ClassDeclarationNode>(parserContext, modifiers);
 
         var structKeyword = Expect(TokenKind.Struct, "struct");
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
-        var declarations = ParseTypeDeclarations(DeclarationKind.Struct);
+        var declarations = ParseTypeDeclarations(ParserContext.Type);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations,
             closeBrace);
     }
 
-    private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
+    private MethodDeclarationNode ParseMethodDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType,
         OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
-        ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<MethodDeclarationNode>(parserContext, modifiers);
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
@@ -772,11 +772,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             blockOrSemicolon);
     }
 
-    private ConstructorDeclarationNode ParseConstructorDeclaration(DeclarationKind declarationContext,
+    private ConstructorDeclarationNode ParseConstructorDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
-        ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<MethodDeclarationNode>(parserContext, modifiers);
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
@@ -802,12 +802,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private FieldDeclarationNode ParseFieldDeclaration(
-        DeclarationKind declarationContext,
+        ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers,
         TypeSyntax type)
     {
-        ValidateModifiers<FieldDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<FieldDeclarationNode>(parserContext, modifiers);
 
         var declarators = ImmutableArray.CreateBuilder<VariableDeclaratorNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
@@ -869,7 +869,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             {
                 separators.Add(Expect(TokenKind.Comma, ","));
 
-                if (isInErrorRecovery) Synchronize(DeclarationKind.ParameterList);
+                if (isInErrorRecovery) Synchronize(ParserContext.ParameterList);
             }
 
             var parameter = ParseParameter();
@@ -903,12 +903,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return modifiers.ToImmutable();
     }
 
-    private PropertyDeclarationNode ParsePropertyDeclaration(DeclarationKind declarationContext,
+    private PropertyDeclarationNode ParsePropertyDeclaration(ParserContext parserContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers,
         TypeSyntax type, OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
-        ValidateModifiers<PropertyDeclarationNode>(declarationContext, modifiers);
+        ValidateModifiers<PropertyDeclarationNode>(parserContext, modifiers);
 
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
@@ -934,7 +934,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                 if (keywordKind is not (TokenKind.OpenBrace or TokenKind.Semicolon))
                 {
-                    if (IsTokenValidForDeclaration(declarationContext, Current.Kind))
+                    if (IsTokenValidForDeclaration(parserContext, Current.Kind))
                     {
                         accessors.Add(HandleIncompleteAccessor(accessorAttributes, accessorModifiers));
 
@@ -943,7 +943,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                     isInErrorRecovery = true;
 
-                    Synchronize(DeclarationKind.Property);
+                    Synchronize(ParserContext.Property);
 
                     continue;
                 }
@@ -954,9 +954,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             accessors.Add(ParseAccessorDeclaration(accessorAttributes, accessorModifiers, keyword));
 
             if (isInErrorRecovery)
-                Synchronize(DeclarationKind.Property);
+                Synchronize(ParserContext.Property);
 
-            if (Current.Kind != TokenKind.Identifier && IsTokenValidForDeclaration(declarationContext, Current.Kind))
+            if (Current.Kind != TokenKind.Identifier && IsTokenValidForDeclaration(parserContext, Current.Kind))
                 break;
         }
 
@@ -982,17 +982,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             OptionalSyntax<SyntaxToken>.None);
     }
 
-    private SimpleNameNode ParseSimpleName(DeclarationKind declarationContext)
+    private SimpleNameNode ParseSimpleName(ParserContext parserContext)
     {
-        var identifier = ExpectIdentifier(declarationContext);
+        var identifier = ExpectIdentifier(parserContext);
 
         return new SimpleNameNode(identifier);
     }
 
 
-    private MemberNameNode ParseQualifiedName(DeclarationKind declarationContext)
+    private MemberNameNode ParseQualifiedName(ParserContext parserContext)
     {
-        MemberNameNode left = ParseSimpleName(declarationContext);
+        MemberNameNode left = ParseSimpleName(parserContext);
 
         while (Current.Kind == TokenKind.Dot)
         {
@@ -1001,7 +1001,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             var dot = Expect(TokenKind.Dot);
 
-            var right = ParseSimpleName(declarationContext);
+            var right = ParseSimpleName(parserContext);
 
             left = new QualifiedNameNode(left, dot, right);
         }
@@ -1010,12 +1010,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
 
-    private OptionalSyntax<ExplicitInterfaceNode> ParseExplicitInterface(DeclarationKind declarationContext)
+    private OptionalSyntax<ExplicitInterfaceNode> ParseExplicitInterface(ParserContext parserContext)
     {
         if (Lookahead.Kind != TokenKind.Dot)
             return OptionalSyntax<ExplicitInterfaceNode>.None;
 
-        var name = ParseQualifiedName(declarationContext);
+        var name = ParseQualifiedName(parserContext);
         var dot = Expect(TokenKind.Dot, ".");
 
         return new ExplicitInterfaceNode(name, dot);
@@ -1028,7 +1028,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         if (keyword.HasValue)
             tokenStream.Advance();
-
+        
         var body = OptionalSyntax<BlockNode>.None;
         var semicolon = OptionalSyntax<SyntaxToken>.None;
 
@@ -1040,26 +1040,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new AccessorDeclarationNode(attributes, modifiers, keyword, body, semicolon);
     }
 
-    private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
+    private static bool IsTokenValidForDeclaration(ParserContext parserContext, TokenKind tokenKind)
     {
-        return declarationKind switch
+        return parserContext switch
         {
-            DeclarationKind.Namespace => tokenKind.IsModifier() ||
+            ParserContext.Namespace => tokenKind.IsModifier() ||
                                          tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
                                              or TokenKind.Enum
                                              or TokenKind.OpenBracket,
-            DeclarationKind.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
+            ParserContext.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
                                     tokenKind is TokenKind.Class or TokenKind.Struct or TokenKind.Enum
                                         or TokenKind.Identifier or TokenKind.CloseBrace,
-            DeclarationKind.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
+            ParserContext.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
                                              tokenKind is TokenKind.Identifier,
-            DeclarationKind.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
+            ParserContext.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
-            DeclarationKind.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
+            ParserContext.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
-            DeclarationKind.Property => tokenKind is TokenKind.Get or TokenKind.Set or TokenKind.OpenBrace
+            ParserContext.Property => tokenKind is TokenKind.Get or TokenKind.Set or TokenKind.OpenBrace
                 or TokenKind.CloseBrace,
             _ => false
         };

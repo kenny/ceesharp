@@ -6,5 +6,5 @@ public record IncompleteMemberDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxElement> Elements) : MemberDeclarationNode
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.None;
+    public override DeclarationKind DeclarationKind => DeclarationKind.Incomplete;
 }

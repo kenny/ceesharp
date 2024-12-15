@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CeeSharp.Core.Parsing;
 using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
@@ -16,7 +17,7 @@ public record MethodDeclarationNode(
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Method;
 
-    public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifier)
+    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.Public
             or TokenKind.Private

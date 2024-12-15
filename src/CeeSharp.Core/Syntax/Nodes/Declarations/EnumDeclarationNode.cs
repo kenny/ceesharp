@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CeeSharp.Core.Parsing;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
@@ -14,9 +15,9 @@ public record EnumDeclarationNode(
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
 
-    public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifierKind)
+    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifierKind)
     {
-        if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
+        if (parserContext != ParserContext.Namespace && modifierKind == TokenKind.New)
             return true;
 
         return modifierKind is TokenKind.Public
