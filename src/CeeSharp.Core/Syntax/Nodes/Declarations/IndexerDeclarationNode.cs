@@ -17,7 +17,7 @@ public sealed record IndexerDeclarationNode(
     ImmutableArray<AccessorDeclarationNode> Accessors,
     SyntaxToken CloseBrace) : MemberDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Property;
+    public override DeclarationKind DeclarationKind => DeclarationKind.Indexer;
 
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
