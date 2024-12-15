@@ -7,6 +7,7 @@ public record MethodDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     TypeSyntax ReturnType,
+    OptionalSyntax<ExplicitInterfaceNode> ExplicitInterface,
     SyntaxToken Identifier,
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,

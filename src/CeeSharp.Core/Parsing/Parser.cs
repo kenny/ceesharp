@@ -574,7 +574,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                         switch (Lookahead.Kind)
                         {
                             case TokenKind.OpenParen:
-                                return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
+                                return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!,
+                                    explicitInterface);
                             case TokenKind.OpenBrace:
                                 return ParsePropertyDeclaration(declarationContext, attributes, modifiers, type!,
                                     explicitInterface);
@@ -605,7 +606,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 switch (Lookahead.Kind)
                 {
                     case TokenKind.OpenParen:
-                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!,
+                            explicitInterface);
                     case TokenKind.OpenBrace:
                         return ParsePropertyDeclaration(declarationContext, attributes, modifiers, predefinedType!,
                             explicitInterface);
@@ -740,7 +742,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
         ImmutableArray<AttributeSectionNode> attributes,
-        ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType)
+        ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType,
+        OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
         ValidateModifiers<MethodDeclarationNode>(declarationContext, modifiers);
 
@@ -761,6 +764,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             attributes,
             modifiers,
             returnType,
+            explicitInterface,
             identifier,
             openParen,
             parameters,
