@@ -15,12 +15,12 @@ public sealed record EnumDeclarationNode(
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
 
-    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifierKind)
+    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
-        if (parserContext != ParserContext.Namespace && modifierKind == TokenKind.New)
+        if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)
             return true;
 
-        return modifierKind is TokenKind.Public
+        return modifier is TokenKind.Public
             or TokenKind.Private
             or TokenKind.Protected
             or TokenKind.Internal;

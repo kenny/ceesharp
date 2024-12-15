@@ -13,12 +13,12 @@ public sealed record FieldDeclarationNode(
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Field;
 
-    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifierKind)
+    public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
-        if (parserContext != ParserContext.Namespace && modifierKind == TokenKind.New)
+        if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)
             return true;
 
-        return modifierKind is TokenKind.Public
+        return modifier is TokenKind.Public
             or TokenKind.Protected
             or TokenKind.Internal
             or TokenKind.Private
