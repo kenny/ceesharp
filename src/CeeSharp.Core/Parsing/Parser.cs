@@ -59,7 +59,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private OptionalSyntax<SyntaxToken> ExpectOptional(TokenKind kind)
     {
         var current = Current;
-        
+
         if (current.Kind != kind)
             return OptionalSyntax<SyntaxToken>.None;
 
@@ -76,7 +76,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return token;
     }
 
-    private bool TryExpect(TokenKind kind, out SyntaxToken token, DeclarationKind declarationContext = DeclarationKind.None)
+    private bool TryExpect(TokenKind kind, out SyntaxToken token,
+        DeclarationKind declarationContext = DeclarationKind.None)
     {
         if (Current.Kind == kind)
         {
@@ -104,8 +105,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         };
 
         skippedTokens.Clear();
-        
-        if(isInErrorRecovery && declarationContext != DeclarationKind.None)
+
+        if (isInErrorRecovery && declarationContext != DeclarationKind.None)
             Synchronize(declarationContext);
 
         return false;
@@ -660,9 +661,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             var attributes = ParseAttributes();
 
             var member = ParseEnumMemberDeclaration(attributes);
-            
+
             members.Add(member);
-            
+
             if (isInErrorRecovery && IsTokenValidForDeclaration(DeclarationKind.Enum, Current.Kind))
             {
                 isInErrorRecovery = false;
@@ -674,7 +675,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return members.ToImmutable();
     }
-    
+
     private EnumMemberDeclarationNode ParseEnumMemberDeclaration(ImmutableArray<AttributeSectionNode> attributes)
     {
         var identifier = ExpectIdentifier(DeclarationKind.EnumMember);
@@ -685,7 +686,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             false => OptionalSyntax<ExpressionNode>.None
         };
         var comma = ExpectIf(TokenKind.Comma, Lookahead.Kind != TokenKind.CloseBrace, ",", DeclarationKind.EnumMember);
-        
+
         return new EnumMemberDeclarationNode(attributes, identifier, assign, expression, comma);
     }
 
@@ -701,7 +702,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var declarations = ParseTypeDeclarations(DeclarationKind.Type);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations, closeBrace);
+        return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations,
+            closeBrace);
     }
 
     private StructDeclarationNode ParseStructDeclaration(DeclarationKind declarationContext,
@@ -716,7 +718,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var declarations = ParseTypeDeclarations(DeclarationKind.Struct);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations, closeBrace);
+        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations,
+            closeBrace);
     }
 
     private MethodDeclarationNode ParseMethodDeclaration(DeclarationKind declarationContext,
@@ -785,7 +788,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         TypeSyntax type)
     {
         ValidateModifiers<FieldDeclarationNode>(declarationContext, modifiers);
-        
+
         var declarators = ImmutableArray.CreateBuilder<VariableDeclaratorNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
@@ -801,7 +804,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var variableDeclarators =
             new SeparatedSyntaxList<VariableDeclaratorNode>(declarators.ToImmutable(), separators.ToImmutable());
-        
+
         var semicolon = Expect(TokenKind.Semicolon);
 
         return new FieldDeclarationNode(
@@ -825,7 +828,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         };
         return new VariableDeclaratorNode(identifier, assign, initializer);
     }
-    
+
     private BlockNode ParseMethodBody()
     {
         var openBrace = Expect(TokenKind.OpenBrace, "{");

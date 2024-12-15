@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
@@ -12,15 +11,15 @@ public record ConstructorDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IMemberNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Constructor;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifier)
     {
-        return modifier is TokenKind.Public 
-            or TokenKind.Private 
+        return modifier is TokenKind.Public
+            or TokenKind.Private
             or TokenKind.Protected
             or TokenKind.Internal
-            or TokenKind.Static 
+            or TokenKind.Static
             or TokenKind.Extern;
     }
-
-    public override DeclarationKind DeclarationKind => DeclarationKind.Constructor;
 }

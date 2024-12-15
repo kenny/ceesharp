@@ -11,11 +11,13 @@ public record ClassDeclarationNode(
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : TypeDeclarationNode, IMemberNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Class;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifierKind)
     {
         if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
             return true;
-        
+
         return modifierKind is TokenKind.Public
             or TokenKind.Private
             or TokenKind.Protected
@@ -30,6 +32,4 @@ public record ClassDeclarationNode(
         foreach (var child in Declarations)
             yield return child;
     }
-
-    public override DeclarationKind DeclarationKind => DeclarationKind.Class;
 }

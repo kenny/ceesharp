@@ -1,5 +1,5 @@
 namespace CeeSharp.Core.Syntax.Types;
 
 public record PointerTypeSyntax(
-    TypeSyntax Type, 
+    TypeSyntax Type,
     SyntaxToken AsteriskToken) : TypeSyntax;

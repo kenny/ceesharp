@@ -11,14 +11,14 @@ public record NamespaceDeclarationNode(
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : DeclarationNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Namespace;
+
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Usings)
             yield return child;
-        
+
         foreach (var child in Declarations)
             yield return child;
     }
-    
-    public override DeclarationKind DeclarationKind => DeclarationKind.Namespace;
 }

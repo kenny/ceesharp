@@ -12,6 +12,8 @@ public record EnumDeclarationNode(
     SyntaxToken CloseBrace,
     OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IMemberNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifierKind)
     {
         if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
@@ -28,6 +30,4 @@ public record EnumDeclarationNode(
         foreach (var child in Members)
             yield return child;
     }
-
-    public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
 }

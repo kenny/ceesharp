@@ -11,6 +11,8 @@ public record StructDeclarationNode(
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : TypeDeclarationNode, IMemberNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Struct;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifierKind)
     {
         if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
@@ -30,6 +32,4 @@ public record StructDeclarationNode(
         foreach (var child in Declarations)
             yield return child;
     }
-
-    public override DeclarationKind DeclarationKind => DeclarationKind.Struct;
 }

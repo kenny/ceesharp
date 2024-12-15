@@ -10,7 +10,8 @@ public record FieldDeclarationNode(
     SeparatedSyntaxList<VariableDeclaratorNode> Declarators,
     SyntaxToken Semicolon) : MemberDeclarationNode, IMemberNode
 {
-    
+    public override DeclarationKind DeclarationKind => DeclarationKind.Field;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifierKind)
     {
         if (declarationContext != DeclarationKind.Namespace && modifierKind == TokenKind.New)
@@ -24,6 +25,4 @@ public record FieldDeclarationNode(
             or TokenKind.Readonly
             or TokenKind.Volatile;
     }
-    
-    public override DeclarationKind DeclarationKind => DeclarationKind.Field;
 }

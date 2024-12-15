@@ -13,6 +13,8 @@ public record MethodDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IMemberNode
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Method;
+
     public static bool IsModifierValid(DeclarationKind declarationContext, TokenKind modifier)
     {
         return modifier is TokenKind.Public
@@ -26,6 +28,4 @@ public record MethodDeclarationNode(
             or TokenKind.Sealed
             or TokenKind.Extern;
     }
-
-    public override DeclarationKind DeclarationKind => DeclarationKind.Method;
 }

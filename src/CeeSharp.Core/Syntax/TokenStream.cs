@@ -31,5 +31,8 @@ public class TokenStream(ImmutableArray<SyntaxToken> tokens)
         return index < tokens.Length ? tokens[index] : Current;
     }
 
-    private SyntaxToken EndOfFile() => new(TokenKind.EndOfFile, "", tokens.Any() ? tokens[^1].Position + 1 : 0);
+    private SyntaxToken EndOfFile()
+    {
+        return new SyntaxToken(TokenKind.EndOfFile, "", tokens.Any() ? tokens[^1].Position + 1 : 0);
+    }
 }

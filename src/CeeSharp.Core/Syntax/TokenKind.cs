@@ -158,50 +158,59 @@ public static class TokenKindExtensions
         return (int)tokenKind >= 0 && (int)tokenKind <= (int)TokenKind.While;
     }
 
-    public static bool IsModifier(this TokenKind kind) => kind switch
+    public static bool IsModifier(this TokenKind kind)
     {
-        TokenKind.Public or
-            TokenKind.Private or
-            TokenKind.Protected or
-            TokenKind.Internal or
-            TokenKind.Abstract or
-            TokenKind.Sealed or
-            TokenKind.Static or
-            TokenKind.Virtual or
-            TokenKind.Extern or
-            TokenKind.Override or
-            TokenKind.Readonly or
-            TokenKind.Volatile or
-            TokenKind.Unsafe or
-            TokenKind.New => true,
-        _ => false
-    };
-    
-    public static bool IsParameterModifier(this TokenKind kind) => kind switch
-    {
-        TokenKind.Ref or
-            TokenKind.Out or 
-            TokenKind.Params => true,
-        _ => false
-    };
+        return kind switch
+        {
+            TokenKind.Public or
+                TokenKind.Private or
+                TokenKind.Protected or
+                TokenKind.Internal or
+                TokenKind.Abstract or
+                TokenKind.Sealed or
+                TokenKind.Static or
+                TokenKind.Virtual or
+                TokenKind.Extern or
+                TokenKind.Override or
+                TokenKind.Readonly or
+                TokenKind.Volatile or
+                TokenKind.Unsafe or
+                TokenKind.New => true,
+            _ => false
+        };
+    }
 
-    public static bool IsPredefinedType(this TokenKind kind) => kind switch
+    public static bool IsParameterModifier(this TokenKind kind)
     {
-        TokenKind.Object or
-            TokenKind.String or
-            TokenKind.Bool or
-            TokenKind.Byte or
-            TokenKind.Sbyte or
-            TokenKind.Char or
-            TokenKind.Decimal or
-            TokenKind.Double or
-            TokenKind.Float or
-            TokenKind.Int or
-            TokenKind.Uint or
-            TokenKind.Long or
-            TokenKind.Ulong or
-            TokenKind.Ushort or
-            TokenKind.Void => true,
-        _ => false
-    };
+        return kind switch
+        {
+            TokenKind.Ref or
+                TokenKind.Out or
+                TokenKind.Params => true,
+            _ => false
+        };
+    }
+
+    public static bool IsPredefinedType(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Object or
+                TokenKind.String or
+                TokenKind.Bool or
+                TokenKind.Byte or
+                TokenKind.Sbyte or
+                TokenKind.Char or
+                TokenKind.Decimal or
+                TokenKind.Double or
+                TokenKind.Float or
+                TokenKind.Int or
+                TokenKind.Uint or
+                TokenKind.Long or
+                TokenKind.Ulong or
+                TokenKind.Ushort or
+                TokenKind.Void => true,
+            _ => false
+        };
+    }
 }
