@@ -564,13 +564,20 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
                         return ParseFieldDeclaration(declarationContext, attributes, modifiers, type!);
 
+                    var explicitInterface = Lookahead.Kind switch
+                    {
+                        TokenKind.Dot => ParseExplicitInterface(declarationContext),
+                        _ => OptionalSyntax<ExplicitInterfaceNode>.None
+                    };
+
                     if (!isInErrorRecovery)
                         switch (Lookahead.Kind)
                         {
                             case TokenKind.OpenParen:
                                 return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
                             case TokenKind.OpenBrace:
-                                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, type!);
+                                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, type!,
+                                    explicitInterface);
                         }
 
                     isInErrorRecovery = false;
@@ -579,25 +586,34 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 }
 
                 return ParseConstructorDeclaration(declarationContext, attributes, modifiers);
+            default:
+            {
+                if (!Current.Kind.IsPredefinedType())
+                    return HandleIncompleteMember(declarationContext, attributes, modifiers);
+
+                var predefinedType = ParsePredefinedType();
+
+                if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
+                    return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+
+                var explicitInterface = Lookahead.Kind switch
+                {
+                    TokenKind.Dot => ParseExplicitInterface(declarationContext),
+                    _ => OptionalSyntax<ExplicitInterfaceNode>.None
+                };
+
+                switch (Lookahead.Kind)
+                {
+                    case TokenKind.OpenParen:
+                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+                    case TokenKind.OpenBrace:
+                        return ParsePropertyDeclaration(declarationContext, attributes, modifiers, predefinedType!,
+                            explicitInterface);
+                }
+
+                return null;
+            }
         }
-
-        if (!Current.Kind.IsPredefinedType())
-            return HandleIncompleteMember(declarationContext, attributes, modifiers);
-
-        var predefinedType = ParsePredefinedType();
-
-        if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
-            return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-
-        switch (Lookahead.Kind)
-        {
-            case TokenKind.OpenParen:
-                return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-            case TokenKind.OpenBrace:
-                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-        }
-
-        return null;
     }
 
     private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
@@ -883,16 +899,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return modifiers.ToImmutable();
     }
 
-    private PropertyDeclarationNode ParsePropertyDeclaration(
-        DeclarationKind declarationContext,
+    private PropertyDeclarationNode ParsePropertyDeclaration(DeclarationKind declarationContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers,
-        TypeSyntax type)
+        TypeSyntax type, OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
         ValidateModifiers<PropertyDeclarationNode>(declarationContext, modifiers);
 
-        ParseExplicitInterfaceName(out var explicitInterface, out var dot, out var identifier);
-
+        var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var accessors = ImmutableArray.CreateBuilder<AccessorDeclarationNode>();
 
@@ -949,7 +963,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             modifiers,
             type,
             explicitInterface,
-            dot,
             identifier,
             openBrace,
             accessors.ToImmutable(),
@@ -965,24 +978,43 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             OptionalSyntax<SyntaxToken>.None);
     }
 
-    private void ParseExplicitInterfaceName(out OptionalSyntax<SyntaxToken> explicitInterface,
-        out OptionalSyntax<SyntaxToken> dot,
-        out SyntaxToken identifier)
+    private SimpleNameNode ParseSimpleName(DeclarationKind declarationContext)
     {
-        identifier = ExpectIdentifier(DeclarationKind.Property);
+        var identifier = ExpectIdentifier(declarationContext);
 
-        if (Current.Kind != TokenKind.Dot)
+        return new SimpleNameNode(identifier);
+    }
+
+
+    private MemberNameNode ParseQualifiedName(DeclarationKind declarationContext)
+    {
+        MemberNameNode left = ParseSimpleName(declarationContext);
+
+        while (Current.Kind == TokenKind.Dot)
         {
-            dot = OptionalSyntax<SyntaxToken>.None;
-            explicitInterface = OptionalSyntax<SyntaxToken>.None;
+            if (tokenStream.Peek(2).Kind is not (TokenKind.Identifier or TokenKind.Dot))
+                break;
 
-            return;
+            var dot = Expect(TokenKind.Dot);
+
+            var right = ParseSimpleName(declarationContext);
+
+            left = new QualifiedNameNode(left, dot, right);
         }
 
-        explicitInterface = OptionalSyntax.With(identifier);
-        dot = ExpectOptional(TokenKind.Dot);
+        return left;
+    }
 
-        identifier = ExpectIdentifier();
+
+    private OptionalSyntax<ExplicitInterfaceNode> ParseExplicitInterface(DeclarationKind declarationContext)
+    {
+        if (Lookahead.Kind != TokenKind.Dot)
+            return OptionalSyntax<ExplicitInterfaceNode>.None;
+
+        var name = ParseQualifiedName(declarationContext);
+        var dot = Expect(TokenKind.Dot, ".");
+
+        return new ExplicitInterfaceNode(name, dot);
     }
 
     private AccessorDeclarationNode ParseAccessorDeclaration(

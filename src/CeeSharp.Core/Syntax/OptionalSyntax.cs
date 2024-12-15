@@ -11,6 +11,8 @@ public readonly struct OptionalSyntax<TElement>(TElement? element)
     public bool HasValue => Element != null;
 
     public static readonly OptionalSyntax<TElement> None = new();
+
+    public static implicit operator OptionalSyntax<TElement>(TElement element) => new(element);
 }
 
 public static class OptionalSyntax
