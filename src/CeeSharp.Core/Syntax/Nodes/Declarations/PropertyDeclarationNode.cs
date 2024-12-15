@@ -18,10 +18,8 @@ public sealed record PropertyDeclarationNode(
 
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
-        if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)
-            return true;
-
-        return modifier is TokenKind.Public
+        return modifier is TokenKind.New
+            or TokenKind.Public
             or TokenKind.Protected
             or TokenKind.Internal
             or TokenKind.Private
