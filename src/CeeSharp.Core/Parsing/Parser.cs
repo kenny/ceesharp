@@ -579,6 +579,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     };
 
                     if (!isInErrorRecovery)
+                    {
+                        if (Current.Kind == TokenKind.This)
+                            return ParseIndexerDeclaration(parserContext, attributes, modifiers, type!,
+                                explicitInterface);
+
+
                         switch (Lookahead.Kind)
                         {
                             case TokenKind.OpenParen:
@@ -588,6 +594,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                                 return ParsePropertyDeclaration(parserContext, attributes, modifiers, type!,
                                     explicitInterface);
                         }
+                    }
 
                     isInErrorRecovery = false;
 
@@ -610,6 +617,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     TokenKind.Dot => ParseExplicitInterface(parserContext),
                     _ => OptionalSyntax<ExplicitInterfaceNode>.None
                 };
+
+                if (Current.Kind == TokenKind.This)
+                    return ParseIndexerDeclaration(parserContext, attributes, modifiers, predefinedType!,
+                        explicitInterface);
 
                 switch (Lookahead.Kind)
                 {
@@ -727,7 +738,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var type = ParseExpectedType();
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
-        var parameters = ParseParameterList(parserContext);
+        var parameters = ParseParameterList(parserContext, TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
@@ -776,7 +787,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
-        var parameters = ParseParameterList(parserContext);
+        var parameters = ParseParameterList(parserContext, TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         SyntaxElement blockOrSemicolon = Current.Kind switch
@@ -807,7 +818,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
-        var parameters = ParseParameterList(parserContext);
+        var parameters = ParseParameterList(parserContext, TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         SyntaxElement blockOrSemicolon = Current.Kind switch
@@ -885,12 +896,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new BlockNode(openBrace, closeBrace);
     }
 
-    private SeparatedSyntaxList<ParameterNode> ParseParameterList(ParserContext parserContext)
+    private SeparatedSyntaxList<ParameterNode> ParseParameterList(ParserContext parserContext, TokenKind closeToken)
     {
         var parameters = ImmutableArray.CreateBuilder<ParameterNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
-        while (Current.Kind != TokenKind.CloseParen && Current.Kind != TokenKind.EndOfFile)
+        while (Current.Kind != closeToken && Current.Kind != TokenKind.EndOfFile)
         {
             if (parameters.Count > 0)
             {
@@ -904,7 +915,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                 if (isInErrorRecovery) Synchronize(ParserContext.ParameterList);
 
-                if (Current.Kind == TokenKind.CloseParen)
+                if (Current.Kind == closeToken)
                     break;
             }
 
@@ -948,6 +959,22 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var identifier = ExpectIdentifier();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var accessors = ParseAccessorDeclarations(ParserContext.Property);
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new PropertyDeclarationNode(
+            attributes,
+            modifiers,
+            type,
+            explicitInterface,
+            identifier,
+            openBrace,
+            accessors,
+            closeBrace);
+    }
+
+    private ImmutableArray<AccessorDeclarationNode> ParseAccessorDeclarations(ParserContext parserContext)
+    {
         var accessors = ImmutableArray.CreateBuilder<AccessorDeclarationNode>();
 
         while (Current.Kind is not (TokenKind.CloseBrace or TokenKind.EndOfFile))
@@ -996,17 +1023,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 break;
         }
 
+        return accessors.ToImmutable();
+    }
+
+    private IndexerDeclarationNode ParseIndexerDeclaration(ParserContext parserContext,
+        ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers,
+        TypeSyntax type, OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
+    {
+        ValidateModifiers<IndexerDeclarationNode>(parserContext, modifiers);
+
+        var thisKeyword = Expect(TokenKind.This, "this");
+        var openBracket = Expect(TokenKind.OpenBracket, "[");
+        var parameters = ParseParameterList(parserContext, TokenKind.CloseBracket);
+        var closeBracket = Expect(TokenKind.CloseBracket, "]");
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var accessors = ParseAccessorDeclarations(parserContext);
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new PropertyDeclarationNode(
-            attributes,
-            modifiers,
-            type,
-            explicitInterface,
-            identifier,
-            openBrace,
-            accessors.ToImmutable(),
-            closeBrace);
+        return new IndexerDeclarationNode(attributes, modifiers, type, explicitInterface, thisKeyword, openBracket,
+            parameters, closeBracket, openBrace, accessors, closeBrace);
     }
 
     private AccessorDeclarationNode HandleIncompleteAccessor(ImmutableArray<AttributeSectionNode> attributes,
