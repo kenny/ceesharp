@@ -532,7 +532,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             if (isInErrorRecovery && IsTokenValidForDeclaration(declarationContext, Current.Kind))
             {
                 isInErrorRecovery = false;
-                break;
+
+                // Do not stop processing if we're in the same context
+                if (declarationContext != DeclarationKind.Type)
+                    break;
             }
 
             if (isInErrorRecovery) Synchronize(declarationContext);
