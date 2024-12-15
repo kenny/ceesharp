@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record IncompleteMemberDeclarationNode(
+public sealed record IncompleteMemberDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxElement> Elements) : MemberDeclarationNode
 {

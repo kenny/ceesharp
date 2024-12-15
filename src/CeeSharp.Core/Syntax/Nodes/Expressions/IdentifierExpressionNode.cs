@@ -1,3 +1,3 @@
 namespace CeeSharp.Core.Syntax.Nodes.Expressions;
 
-public record IdentifierExpressionNode(SyntaxToken Identifier) : ExpressionNode;
+public sealed record IdentifierExpressionNode(SyntaxToken Identifier) : ExpressionNode;

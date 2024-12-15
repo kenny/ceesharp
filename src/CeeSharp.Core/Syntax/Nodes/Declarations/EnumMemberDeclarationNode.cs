@@ -3,7 +3,7 @@ using CeeSharp.Core.Syntax.Nodes.Expressions;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record EnumMemberDeclarationNode(
+public sealed record EnumMemberDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     SyntaxToken Identifier,
     OptionalSyntax<SyntaxToken> Assign,

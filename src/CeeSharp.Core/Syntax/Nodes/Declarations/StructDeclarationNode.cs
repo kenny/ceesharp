@@ -3,7 +3,7 @@ using CeeSharp.Core.Parsing;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record StructDeclarationNode(
+public sealed record StructDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken StructKeyword,

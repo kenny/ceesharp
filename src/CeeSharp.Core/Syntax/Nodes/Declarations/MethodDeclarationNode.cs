@@ -4,7 +4,7 @@ using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record MethodDeclarationNode(
+public sealed record MethodDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
     TypeSyntax ReturnType,

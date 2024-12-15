@@ -3,7 +3,7 @@ using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public record ParameterNode(
+public sealed record ParameterNode(
     ImmutableArray<SyntaxToken> Modifiers,
     TypeSyntax Type,
     SyntaxToken Identifier) : SyntaxNode;

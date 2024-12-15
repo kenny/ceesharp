@@ -1,6 +1,6 @@
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public record UsingDirectiveNode(
+public sealed record UsingDirectiveNode(
     SyntaxToken UsingKeyword,
     OptionalSyntax<UsingAliasNode> Alias,
     SyntaxToken Identifier,

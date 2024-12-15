@@ -3,7 +3,7 @@ using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
-public record NamespaceDeclarationNode(
+public sealed record NamespaceDeclarationNode(
     SyntaxToken NamespaceKeyword,
     TypeSyntax QualifiedName,
     SyntaxToken OpenBrace,

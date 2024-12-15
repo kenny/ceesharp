@@ -1,3 +1,3 @@
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public record SimpleNameNode(SyntaxToken Name) : MemberNameNode;
+public sealed record SimpleNameNode(SyntaxToken Name) : MemberNameNode;
