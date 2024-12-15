@@ -562,9 +562,15 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                     if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
                         return ParseFieldDeclaration(declarationContext, attributes, modifiers, type!);
-                    
+
                     if (!isInErrorRecovery)
-                        return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
+                        switch (Lookahead.Kind)
+                        {
+                            case TokenKind.OpenParen:
+                                return ParseMethodDeclaration(declarationContext, attributes, modifiers, type!);
+                            case TokenKind.OpenBrace:
+                                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, type!);
+                        }
 
                     isInErrorRecovery = false;
 
@@ -576,15 +582,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         if (!Current.Kind.IsPredefinedType())
             return HandleIncompleteMember(declarationContext, attributes, modifiers);
-        
+
         var predefinedType = ParsePredefinedType();
-        
+
         if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
             return ParseFieldDeclaration(declarationContext, attributes, modifiers, predefinedType!);
-        
-        return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+
+        switch (Lookahead.Kind)
+        {
+            case TokenKind.OpenParen:
+                return ParseMethodDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+            case TokenKind.OpenBrace:
+                return ParsePropertyDeclaration(declarationContext, attributes, modifiers, predefinedType!);
+        }
+
+        return null;
     }
-    
+
     private DeclarationNode HandleIncompleteMember(DeclarationKind declarationContext,
         ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, params SyntaxElement[] elements)
@@ -866,12 +880,134 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return modifiers.ToImmutable();
     }
 
+    private PropertyDeclarationNode ParsePropertyDeclaration(
+        DeclarationKind declarationContext,
+        ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers,
+        TypeSyntax type)
+    {
+        ValidateModifiers<PropertyDeclarationNode>(declarationContext, modifiers);
+
+        ParseExplicitInterfaceName(out var explicitInterface, out var dot, out var identifier);
+
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var accessors = ImmutableArray.CreateBuilder<AccessorDeclarationNode>();
+
+        while (Current.Kind is not (TokenKind.CloseBrace or TokenKind.EndOfFile))
+        {
+            var accessorAttributes = ParseAttributes();
+            var accessorModifiers = ParseModifiers();
+
+            var keyword = OptionalSyntax.With(Current.Text switch
+            {
+                "get" => Current with { Kind = TokenKind.Get },
+                "set" => Current with { Kind = TokenKind.Set },
+                _ => Current
+            });
+
+            var keywordKind = keyword.Element!.Kind;
+
+            if (keywordKind is not (TokenKind.Get or TokenKind.Set))
+            {
+                diagnostics.ReportError(keyword.Element!.Position, "A get or set accessor expected");
+
+                if (keywordKind is not (TokenKind.OpenBrace or TokenKind.Semicolon))
+                {
+                    if (IsTokenValidForDeclaration(declarationContext, Current.Kind))
+                    {
+                        accessors.Add(HandleIncompleteAccessor(accessorAttributes, accessorModifiers));
+
+                        break;
+                    }
+
+                    isInErrorRecovery = true;
+
+                    Synchronize(DeclarationKind.Property);
+
+                    continue;
+                }
+
+                keyword = OptionalSyntax<SyntaxToken>.None;
+            }
+
+            accessors.Add(ParseAccessorDeclaration(accessorAttributes, accessorModifiers, keyword));
+
+            if (isInErrorRecovery)
+                Synchronize(DeclarationKind.Property);
+
+            if (Current.Kind != TokenKind.Identifier && IsTokenValidForDeclaration(declarationContext, Current.Kind))
+                break;
+        }
+
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new PropertyDeclarationNode(
+            attributes,
+            modifiers,
+            type,
+            explicitInterface,
+            dot,
+            identifier,
+            openBrace,
+            accessors.ToImmutable(),
+            closeBrace);
+    }
+
+    private AccessorDeclarationNode HandleIncompleteAccessor(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        return new AccessorDeclarationNode(attributes, modifiers,
+            OptionalSyntax<SyntaxToken>.None,
+            OptionalSyntax<BlockNode>.None,
+            OptionalSyntax<SyntaxToken>.None);
+    }
+
+    private void ParseExplicitInterfaceName(out OptionalSyntax<SyntaxToken> explicitInterface,
+        out OptionalSyntax<SyntaxToken> dot,
+        out SyntaxToken identifier)
+    {
+        identifier = ExpectIdentifier(DeclarationKind.Property);
+
+        if (Current.Kind != TokenKind.Dot)
+        {
+            dot = OptionalSyntax<SyntaxToken>.None;
+            explicitInterface = OptionalSyntax<SyntaxToken>.None;
+
+            return;
+        }
+
+        explicitInterface = OptionalSyntax.With(identifier);
+        dot = ExpectOptional(TokenKind.Dot);
+
+        identifier = ExpectIdentifier();
+    }
+
+    private AccessorDeclarationNode ParseAccessorDeclaration(
+        ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers,
+        OptionalSyntax<SyntaxToken> keyword)
+    {
+        if (keyword.HasValue)
+            tokenStream.Advance();
+
+        var body = OptionalSyntax<BlockNode>.None;
+        var semicolon = OptionalSyntax<SyntaxToken>.None;
+
+        if (Current.Kind == TokenKind.OpenBrace)
+            body = OptionalSyntax.With(ParseMethodBody());
+        else
+            semicolon = OptionalSyntax.With(Expect(TokenKind.Semicolon, ";"));
+
+        return new AccessorDeclarationNode(attributes, modifiers, keyword, body, semicolon);
+    }
+
     private static bool IsTokenValidForDeclaration(DeclarationKind declarationKind, TokenKind tokenKind)
     {
         return declarationKind switch
         {
             DeclarationKind.Namespace => tokenKind.IsModifier() ||
-                                         tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct or TokenKind.Enum
+                                         tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
+                                             or TokenKind.Enum
                                              or TokenKind.OpenBracket,
             DeclarationKind.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
                                     tokenKind is TokenKind.Class or TokenKind.Struct or TokenKind.Enum
@@ -884,6 +1020,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             DeclarationKind.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
+            DeclarationKind.Property => tokenKind is TokenKind.Get or TokenKind.Set or TokenKind.OpenBrace
+                or TokenKind.CloseBrace,
             _ => false
         };
     }
