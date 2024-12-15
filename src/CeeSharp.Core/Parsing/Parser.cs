@@ -498,7 +498,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     }
 
     private void ValidateModifiers<TNode>(ParserContext parserContext, ImmutableArray<SyntaxToken> modifiers)
-        where TNode : IMemberNode
+        where TNode : IModifierValidator
     {
         var seenModifiers = new HashSet<TokenKind>();
 

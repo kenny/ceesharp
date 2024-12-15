@@ -11,7 +11,7 @@ public record EnumDeclarationNode(
     SyntaxToken OpenBrace,
     ImmutableArray<EnumMemberDeclarationNode> Members,
     SyntaxToken CloseBrace,
-    OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IMemberNode
+    OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
 

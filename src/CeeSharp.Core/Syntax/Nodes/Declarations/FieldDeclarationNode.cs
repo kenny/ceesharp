@@ -9,7 +9,7 @@ public record FieldDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     TypeSyntax Type,
     SeparatedSyntaxList<VariableDeclaratorNode> Declarators,
-    SyntaxToken Semicolon) : MemberDeclarationNode, IMemberNode
+    SyntaxToken Semicolon) : MemberDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Field;
 

@@ -10,7 +10,7 @@ public record ConstructorDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
-    SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IMemberNode
+    SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Constructor;
 

@@ -12,7 +12,7 @@ public record PropertyDeclarationNode(
     SyntaxToken Identifier,
     SyntaxToken OpenBrace,
     ImmutableArray<AccessorDeclarationNode> Accessors,
-    SyntaxToken CloseBrace) : MemberDeclarationNode, IMemberNode
+    SyntaxToken CloseBrace) : MemberDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Property;
 

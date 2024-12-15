@@ -10,7 +10,7 @@ public record ClassDeclarationNode(
     SyntaxToken Identifier,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
-    SyntaxToken CloseBrace) : TypeDeclarationNode, IMemberNode
+    SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Class;
 
