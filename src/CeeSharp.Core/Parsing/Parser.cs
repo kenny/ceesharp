@@ -3,6 +3,7 @@ using CeeSharp.Core.Syntax;
 using CeeSharp.Core.Syntax.Nodes;
 using CeeSharp.Core.Syntax.Nodes.Declarations;
 using CeeSharp.Core.Syntax.Nodes.Expressions;
+using CeeSharp.Core.Syntax.Nodes.Statements;
 using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Parsing;
@@ -792,7 +793,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         SyntaxElement blockOrSemicolon = Current.Kind switch
         {
-            TokenKind.OpenBrace => ParseMethodBody(),
+            TokenKind.OpenBrace => ParseBlockStatement(ParserContext.Method),
             _ => Expect(TokenKind.Semicolon, ";")
         };
 
@@ -823,7 +824,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         SyntaxElement blockOrSemicolon = Current.Kind switch
         {
-            TokenKind.OpenBrace => ParseMethodBody(),
+            TokenKind.OpenBrace => ParseBlockStatement(ParserContext.Method),
             _ => Expect(TokenKind.Semicolon, ";")
         };
 
@@ -885,15 +886,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             false => OptionalSyntax<ExpressionNode>.None
         };
         return new VariableDeclaratorNode(identifier, assign, initializer);
-    }
-
-    private BlockNode ParseMethodBody()
-    {
-        var openBrace = Expect(TokenKind.OpenBrace, "{");
-
-        var closeBrace = Expect(TokenKind.CloseBrace, "}");
-
-        return new BlockNode(openBrace, closeBrace);
     }
 
     private SeparatedSyntaxList<ParameterNode> ParseParameterList(ParserContext parserContext, TokenKind closeToken)
@@ -1050,7 +1042,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         return new AccessorDeclarationNode(attributes, modifiers,
             OptionalSyntax<SyntaxToken>.None,
-            OptionalSyntax<BlockNode>.None,
+            OptionalSyntax<BlockStatementNode>.None,
             OptionalSyntax<SyntaxToken>.None);
     }
 
@@ -1101,15 +1093,77 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         if (keyword.HasValue)
             tokenStream.Advance();
 
-        var body = OptionalSyntax<BlockNode>.None;
+        var body = OptionalSyntax<BlockStatementNode>.None;
         var semicolon = OptionalSyntax<SyntaxToken>.None;
 
         if (Current.Kind == TokenKind.OpenBrace)
-            body = OptionalSyntax.With(ParseMethodBody());
+            body = OptionalSyntax.With(ParseBlockStatement(ParserContext.Method));
         else
             semicolon = OptionalSyntax.With(Expect(TokenKind.Semicolon, ";"));
 
         return new AccessorDeclarationNode(attributes, modifiers, keyword, body, semicolon);
+    }
+
+    private StatementNode ParseStatement(ParserContext parserContext)
+    {
+        return Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseBlockStatement(parserContext),
+            TokenKind.If => ParseIfStatement(parserContext),
+            _ => ParseExpressionStatement()
+        };
+    }
+
+    private BlockStatementNode ParseBlockStatement(ParserContext parserContext)
+    {
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var statements = ImmutableArray.CreateBuilder<StatementNode>();
+
+        while (Current.Kind != TokenKind.CloseBrace && Current.Kind != TokenKind.EndOfFile)
+        {
+            var statement = ParseStatement(parserContext);
+            statements.Add(statement);
+
+            if (isInErrorRecovery)
+            {
+                Synchronize(parserContext, TokenKind.Semicolon, TokenKind.CloseBrace);
+                
+                if (Current.Kind == TokenKind.CloseBrace)
+                    break;
+            }
+        }
+
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new BlockStatementNode(openBrace, statements.ToImmutable(), closeBrace);
+    }
+    
+    private StatementNode ParseExpressionStatement()
+    {
+        throw new NotImplementedException();
+    }
+
+    private IfStatementNode ParseIfStatement(ParserContext parserContext)
+    {
+        var ifKeyword = Expect(TokenKind.If, "if");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var condition = new IdentifierExpressionNode(ExpectIdentifier());
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement(parserContext);
+        var elseClause = ParseElseClause(parserContext);
+
+        return new IfStatementNode(ifKeyword, openParen, condition, closeParen, statement, elseClause);
+    }
+
+    private OptionalSyntax<ElseClauseNode> ParseElseClause(ParserContext parserContext)
+    {
+        if (Current.Kind != TokenKind.Else)
+            return OptionalSyntax<ElseClauseNode>.None;
+
+        var elseKeyword = Expect(TokenKind.Else, "else");
+        var statement = ParseStatement(parserContext);
+
+        return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
     }
 
     private static bool IsTokenValidForDeclaration(ParserContext parserContext, TokenKind tokenKind)

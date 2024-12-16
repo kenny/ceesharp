@@ -15,6 +15,12 @@ public sealed record MethodDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        if (BlockOrSemicolon is SyntaxNode blockNode)
+            yield return blockNode;
+    }
+
     public override DeclarationKind DeclarationKind => DeclarationKind.Method;
 
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
