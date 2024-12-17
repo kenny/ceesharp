@@ -1137,10 +1137,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new BlockStatementNode(openBrace, statements.ToImmutable(), closeBrace);
     }
-    
+
     private StatementNode ParseExpressionStatement()
     {
-        throw new NotImplementedException();
+        var expression = ParseExpression();
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new ExpressionStatementNode(expression, semicolon);
     }
 
     private IfStatementNode ParseIfStatement(ParserContext parserContext)
