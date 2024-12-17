@@ -8,4 +8,14 @@ public sealed record AccessorDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     OptionalSyntax<SyntaxToken> Keyword,
     OptionalSyntax<BlockStatementNode> Body,
-    OptionalSyntax<SyntaxToken> Semicolon) : SyntaxNode;
+    OptionalSyntax<SyntaxToken> Semicolon) : SyntaxNode
+{
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+
+        if (Body.HasValue)
+            yield return Body.Element;
+    }
+}

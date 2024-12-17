@@ -7,4 +7,10 @@ public sealed record IncompleteMemberDeclarationNode(
     ImmutableArray<SyntaxElement> Elements) : MemberDeclarationNode
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Incomplete;
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+    }
 }

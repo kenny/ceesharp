@@ -15,12 +15,6 @@ public sealed record MethodDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
-    public override IEnumerable<SyntaxNode> GetChildren()
-    {
-        if (BlockOrSemicolon is SyntaxNode blockNode)
-            yield return blockNode;
-    }
-
     public override DeclarationKind DeclarationKind => DeclarationKind.Method;
 
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
@@ -35,5 +29,20 @@ public sealed record MethodDeclarationNode(
             or TokenKind.New
             or TokenKind.Sealed
             or TokenKind.Extern;
+    }
+    
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+        
+        if (ExplicitInterface.HasValue)
+            yield return ExplicitInterface.Element;
+        
+        foreach (var child in Parameters.Elements)
+            yield return child;
+        
+        if (BlockOrSemicolon is SyntaxNode blockNode)
+            yield return blockNode;
     }
 }

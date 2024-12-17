@@ -28,6 +28,9 @@ public sealed record EnumDeclarationNode(
 
     public override IEnumerable<SyntaxNode> GetChildren()
     {
+        foreach (var child in Attributes)
+            yield return child;
+        
         foreach (var child in Members)
             yield return child;
     }

@@ -30,6 +30,9 @@ public sealed record StructDeclarationNode(
 
     public override IEnumerable<SyntaxNode> GetChildren()
     {
+        foreach (var child in Attributes)
+            yield return child;
+        
         foreach (var child in Declarations)
             yield return child;
     }

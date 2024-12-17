@@ -24,4 +24,13 @@ public sealed record FieldDeclarationNode(
             or TokenKind.Readonly
             or TokenKind.Volatile;
     }
+
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+        
+        foreach (var child in Declarators.Elements)
+            yield return child;
+    }
 }

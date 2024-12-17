@@ -23,4 +23,16 @@ public sealed record ConstructorDeclarationNode(
             or TokenKind.Static
             or TokenKind.Extern;
     }
+    
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+
+        foreach (var child in Parameters.Elements)
+            yield return child;
+
+        if (BlockOrSemicolon is SyntaxNode blockNode)
+            yield return blockNode;
+    }
 }

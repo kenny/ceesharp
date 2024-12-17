@@ -27,4 +27,13 @@ public sealed record DelegateDeclarationNode(
     }
 
     public override DeclarationKind DeclarationKind => DeclarationKind.Delegate;
+    
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Attributes)
+            yield return child;
+        
+        foreach (var child in Parameters.Elements)
+            yield return child;
+    }
 }
