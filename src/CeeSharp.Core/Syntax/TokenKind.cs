@@ -214,97 +214,169 @@ public static class TokenKindExtensions
         };
     }
 
-    public static bool IsAssignmentOperator(this TokenKind kind)
+    public static bool IsAssignmentOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Assign => true,
-            TokenKind.PlusAssign => true,
-            TokenKind.MinusAssign => true,
-            TokenKind.TimesAssign => true,
-            TokenKind.DivideAssign => true,
-            TokenKind.ModuloAssign => true,
-            TokenKind.AndAssign => true,
-            TokenKind.OrAssign => true,
-            TokenKind.XorAssign => true,
-            TokenKind.LeftShiftAssign => true,
-            TokenKind.RightShiftAssign => true,
-            _ => false
-        };
-    }
+        TokenKind.Assign => true,
+        TokenKind.PlusAssign => true,
+        TokenKind.MinusAssign => true,
+        TokenKind.TimesAssign => true,
+        TokenKind.DivideAssign => true,
+        TokenKind.ModuloAssign => true,
+        TokenKind.AndAssign => true,
+        TokenKind.OrAssign => true,
+        TokenKind.XorAssign => true,
+        TokenKind.LeftShiftAssign => true,
+        TokenKind.RightShiftAssign => true,
+        _ => false
+    };
 
-    public static bool IsEqualityOperator(this TokenKind kind)
+    public static bool IsEqualityOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Equal => true,
-            TokenKind.NotEqual => true,
-            _ => false
-        };
-    }
+        TokenKind.Equal => true,
+        TokenKind.NotEqual => true,
+        _ => false
+    };
 
-    public static bool IsRelationalOperator(this TokenKind kind)
+    public static bool IsRelationalOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.LessThan => true,
-            TokenKind.GreaterThan => true,
-            TokenKind.LessThanOrEqual => true,
-            TokenKind.GreaterThanOrEqual => true,
-            _ => false
-        };
-    }
+        TokenKind.LessThan => true,
+        TokenKind.GreaterThan => true,
+        TokenKind.LessThanOrEqual => true,
+        TokenKind.GreaterThanOrEqual => true,
+        _ => false
+    };
 
-    public static bool IsAdditiveOperator(this TokenKind kind)
+    public static bool IsAdditiveOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Plus => true,
-            TokenKind.Minus => true,
-            _ => false
-        };
-    }
+        TokenKind.Plus => true,
+        TokenKind.Minus => true,
+        _ => false
+    };
 
-    public static bool IsMultiplicativeOperator(this TokenKind kind)
+    public static bool IsMultiplicativeOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Asterisk => true,
-            TokenKind.Divide => true,
-            TokenKind.Modulo => true,
-            _ => false
-        };
-    }
+        TokenKind.Asterisk => true,
+        TokenKind.Divide => true,
+        TokenKind.Modulo => true,
+        _ => false
+    };
 
-    public static bool IsUnaryOperator(this TokenKind kind)
+    public static bool IsUnaryOperator(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Plus => true,
-            TokenKind.Minus => true,
-            TokenKind.Exclamation => true,
-            TokenKind.Tilde => true,
-            TokenKind.PlusPlus => true,
-            TokenKind.MinusMinus => true,
-            _ => false
-        };
-    }
+        TokenKind.Plus => true,
+        TokenKind.Minus => true,
+        TokenKind.Exclamation => true,
+        TokenKind.Tilde => true,
+        TokenKind.PlusPlus => true,
+        TokenKind.MinusMinus => true,
+        _ => false
+    };
 
-    public static bool CanStartExpression(this TokenKind kind)
+    public static bool CanStartExpression(this TokenKind tokenKind) => tokenKind switch
     {
-        return kind switch
-        {
-            TokenKind.Identifier => true,
+        TokenKind.OpenParen
+            or TokenKind.This
+            or TokenKind.Base
+            or TokenKind.New
+            or TokenKind.Typeof
+            or TokenKind.Default
+            or TokenKind.Sizeof
+            or TokenKind.Stackalloc
+            or TokenKind.Identifier => true,
+        _ => false
+    };
 
-            TokenKind.Plus => true,
-            TokenKind.Minus => true,
-            TokenKind.Exclamation => true,
-            TokenKind.Tilde => true,
-            TokenKind.PlusPlus => true,
-            TokenKind.MinusMinus => true,
+    public static bool IsValidInNamespace(this TokenKind tokenKind) => tokenKind switch
+    {
+        // Declarations that can appear in namespace
+        TokenKind.Namespace
+            or TokenKind.Class
+            or TokenKind.Struct
+            or TokenKind.Enum
+            or TokenKind.Interface
+            or TokenKind.Delegate
+            or TokenKind.Using
+            or TokenKind.OpenBracket => true,
+        _ => tokenKind.IsModifier()
+    };
 
-            TokenKind.OpenParen => true,
-            _ => false
-        };
-    }
+    public static bool IsValidInType(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.Class
+            or TokenKind.Struct
+            or TokenKind.Enum
+            or TokenKind.Interface
+            or TokenKind.Delegate
+            or TokenKind.Event
+            or TokenKind.Operator
+            or TokenKind.Implicit
+            or TokenKind.Explicit
+            or TokenKind.Identifier
+            or TokenKind.CloseBrace
+            or TokenKind.OpenBracket => true,
+        _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType()
+    };
+
+    public static bool IsValidInEnumMember(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.Identifier
+            or TokenKind.CloseBrace
+            or TokenKind.OpenBracket
+            or TokenKind.Comma => true,
+        _ => false
+    };
+
+    public static bool IsValidInParameterList(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.Identifier
+            or TokenKind.CloseParen
+            or TokenKind.Comma
+            or TokenKind.OpenBracket => true,
+        _ => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier()
+    };
+
+    public static bool IsValidInAttributeList(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.Identifier
+            or TokenKind.CloseBracket
+            or TokenKind.Comma
+            or TokenKind.OpenParen
+            or TokenKind.CloseParen => true,
+        _ => false
+    };
+
+    public static bool IsValidInProperty(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.Get
+            or TokenKind.Set
+            or TokenKind.OpenBrace
+            or TokenKind.CloseBrace
+            or TokenKind.OpenBracket => true,
+        _ => tokenKind.IsModifier()
+    };
+
+    public static bool IsValidInStatement(this TokenKind tokenKind) => tokenKind switch
+    {
+        TokenKind.If
+            or TokenKind.For
+            or TokenKind.Foreach
+            or TokenKind.While
+            or TokenKind.Do
+            or TokenKind.Switch
+            or TokenKind.Break
+            or TokenKind.Continue
+            or TokenKind.Return
+            or TokenKind.Throw
+            or TokenKind.Try
+            or TokenKind.Using
+            or TokenKind.Fixed
+            or TokenKind.Lock
+            or TokenKind.Checked
+            or TokenKind.Unchecked
+            or TokenKind.Unsafe
+            or TokenKind.Semicolon
+            or TokenKind.OpenBrace
+            or TokenKind.CloseBrace => true,
+        _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType() || tokenKind.CanStartExpression()
+    };
 }

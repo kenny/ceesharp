@@ -5,11 +5,9 @@ public enum ParserContext
     None,
     Namespace,
     Type,
-    Method,
-    Delegate,
+    EnumMember,
     ParameterList,
     AttributeList,
-    EnumMember,
     Property,
     Statement
 }
