@@ -12,6 +12,7 @@ public sealed record IfStatementNode(
 {
     public override IEnumerable<SyntaxNode> GetChildren()
     {
+        yield return Condition;
         yield return Statement;
 
         if (ElseClause.HasValue)

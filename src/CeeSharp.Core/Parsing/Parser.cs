@@ -1147,7 +1147,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var ifKeyword = Expect(TokenKind.If, "if");
         var openParen = Expect(TokenKind.OpenParen, "(");
-        var condition = new IdentifierExpressionNode(ExpectIdentifier());
+        var condition = ParseExpression();
         var closeParen = Expect(TokenKind.CloseParen, ")");
         var statement = ParseStatement(parserContext);
         var elseClause = ParseElseClause(parserContext);
@@ -1164,6 +1164,166 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var statement = ParseStatement(parserContext);
 
         return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
+    }
+    
+    private ExpressionNode ParseExpression()
+    {
+        return ParseAssignmentExpression();
+    }
+
+    private ExpressionNode ParseAssignmentExpression()
+    {
+        var left = ParseConditionalExpression();
+
+        if (!Current.Kind.IsAssignmentOperator())
+            return left;
+
+        var operatorToken = Expect(Current.Kind);
+        var right = ParseAssignmentExpression();
+
+        return new AssignmentExpressionNode(left, operatorToken, right);
+    }
+
+    private ExpressionNode ParseConditionalExpression()
+    {
+        var condition = ParseLogicalOrExpression();
+
+        if (Current.Kind != TokenKind.Question) 
+            return condition;
+        
+        var questionToken = Expect(TokenKind.Question);
+        var ifTrue = ParseExpression();
+        var colonToken = Expect(TokenKind.Colon, ":");
+        var ifFalse = ParseExpression();
+            
+        return new ConditionalExpressionNode(condition, questionToken, ifTrue, colonToken, ifFalse);
+    }
+    
+    private ExpressionNode ParseLogicalOrExpression()
+    {
+        var left = ParseLogicalAndExpression();
+
+        while (Current.Kind == TokenKind.OrOr)
+        {
+            var operatorToken = Expect(TokenKind.OrOr);
+            var right = ParseLogicalAndExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseLogicalAndExpression()
+    {
+        var left = ParseEqualityExpression();
+
+        while (Current.Kind == TokenKind.AndAnd)
+        {
+            var operatorToken = Expect(TokenKind.AndAnd);
+            var right = ParseEqualityExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseEqualityExpression()
+    {
+        var left = ParseRelationalExpression();
+
+        while (Current.Kind.IsEqualityOperator())
+        {
+            var operatorToken = Expect(Current.Kind);
+            var right = ParseRelationalExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseRelationalExpression()
+    {
+        var left = ParseAdditiveExpression();
+
+        while (true)
+        {
+            switch (Current.Kind)
+            {
+                case TokenKind.Is:
+                    var isKeyword = Expect(TokenKind.Is);
+                    var isType = ParseExpectedType();
+                    left = new IsExpressionNode(left, isKeyword, isType);
+                    break;
+                
+                case TokenKind.As:
+                    var asKeyword = Expect(TokenKind.As);
+                    var asType = ParseExpectedType();
+                    left = new AsExpressionNode(left, asKeyword, asType);
+                    break;
+
+                default:
+                    if (!Current.Kind.IsRelationalOperator())
+                        return left;
+                    
+                    var operatorToken = Expect(Current.Kind);
+                    var right = ParseAdditiveExpression();
+                    left = new BinaryExpressionNode(left, operatorToken, right);
+                    break;
+            }
+        }
+    }
+    
+    private ExpressionNode ParseAdditiveExpression()
+    {
+        var left = ParseMultiplicativeExpression();
+
+        while (Current.Kind.IsAdditiveOperator())
+        {
+            var operatorToken = Expect(Current.Kind);
+            var right = ParseMultiplicativeExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseMultiplicativeExpression()
+    {
+        var left = ParseUnaryExpression();
+
+        while (Current.Kind.IsMultiplicativeOperator())
+        {
+            var operatorToken = Expect(Current.Kind);
+            var right = ParseUnaryExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseUnaryExpression()
+    {
+        if (Current.Kind.IsUnaryOperator())
+        {
+            var operatorToken = Expect(Current.Kind);
+            var operand = ParseUnaryExpression();
+            return new PrefixUnaryExpressionNode(operatorToken, operand);
+        }
+
+        var expression = ParsePrimaryExpression();
+
+        while (Current.Kind is TokenKind.PlusPlus or TokenKind.MinusMinus)
+        {
+            var operatorToken = Expect(Current.Kind);
+            expression = new PostfixUnaryExpressionNode(expression, operatorToken);
+        }
+
+        return expression;
+    }
+    
+    private ExpressionNode ParsePrimaryExpression()
+    {
+        return new IdentifierExpressionNode(ExpectIdentifier());
     }
 
     private static bool IsTokenValidForDeclaration(ParserContext parserContext, TokenKind tokenKind)

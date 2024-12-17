@@ -213,4 +213,80 @@ public static class TokenKindExtensions
             _ => false
         };
     }
+
+    public static bool IsAssignmentOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Assign => true,
+            TokenKind.PlusAssign => true,
+            TokenKind.MinusAssign => true,
+            TokenKind.TimesAssign => true,
+            TokenKind.DivideAssign => true,
+            TokenKind.ModuloAssign => true,
+            TokenKind.AndAssign => true,
+            TokenKind.OrAssign => true,
+            TokenKind.XorAssign => true,
+            TokenKind.LeftShiftAssign => true,
+            TokenKind.RightShiftAssign => true,
+            _ => false
+        };
+    }
+    
+    public static bool IsEqualityOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Equal => true,
+            TokenKind.NotEqual => true,
+            _ => false
+        };
+    }
+    
+    public static bool IsRelationalOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.LessThan => true,
+            TokenKind.GreaterThan => true,
+            TokenKind.LessThanOrEqual => true,
+            TokenKind.GreaterThanOrEqual => true,
+            _ => false
+        };
+    }
+
+    public static bool IsAdditiveOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Plus => true,
+            TokenKind.Minus => true,
+            _ => false
+        };
+    }
+    
+    public static bool IsMultiplicativeOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Asterisk => true,
+            TokenKind.Divide => true,
+            TokenKind.Modulo => true,
+            _ => false
+        };
+    }
+
+    public static bool IsUnaryOperator(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Plus => true,
+            TokenKind.Minus => true,
+            TokenKind.Exclamation => true,
+            TokenKind.Tilde => true,
+            TokenKind.PlusPlus => true,
+            TokenKind.MinusMinus => true,
+            _ => false
+        };
+    }
 }
