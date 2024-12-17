@@ -421,7 +421,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private AttributeArgumentNode ParseAttributeArgument()
     {
         var named = ParseAttributeNamedArgument();
-        var expression = new IdentifierExpressionNode(ExpectIdentifier());
+        var expression = ParseExpression();
 
         return new AttributeArgumentNode(named, expression);
     }
@@ -722,7 +722,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var assign = ExpectOptional(TokenKind.Assign);
         var expression = assign.HasValue switch
         {
-            true => OptionalSyntax.With<ExpressionNode>(new IdentifierExpressionNode(ExpectIdentifier())),
+            true => OptionalSyntax.With(ParseExpression()),
             false => OptionalSyntax<ExpressionNode>.None
         };
         var comma = ExpectIf(TokenKind.Comma, Lookahead.Kind != TokenKind.CloseBrace, ",", ParserContext.EnumMember);
@@ -882,7 +882,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var initializer = assign.HasValue switch
         {
-            true => OptionalSyntax.With<ExpressionNode>(new IdentifierExpressionNode(ExpectIdentifier())),
+            true => OptionalSyntax.With(ParseExpression()),
             false => OptionalSyntax<ExpressionNode>.None
         };
         return new VariableDeclaratorNode(identifier, assign, initializer);
