@@ -1126,7 +1126,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             if (isInErrorRecovery)
             {
-                Synchronize(parserContext, TokenKind.Semicolon, TokenKind.CloseBrace);
+                Synchronize(parserContext);
 
                 if (Current.Kind == TokenKind.CloseBrace)
                     break;
@@ -1348,6 +1348,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             ParserContext.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
+            ParserContext.Method => tokenKind.IsPredefinedType() || tokenKind is TokenKind.Identifier
+                or TokenKind.Semicolon or TokenKind.OpenBrace
+                or TokenKind.CloseBrace,
             ParserContext.Property => tokenKind is TokenKind.Get or TokenKind.Set or TokenKind.OpenBrace
                 or TokenKind.CloseBrace,
             _ => false
