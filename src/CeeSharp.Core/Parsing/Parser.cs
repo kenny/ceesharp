@@ -921,12 +921,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ParameterNode ParseParameter()
     {
+        var attributes = ParseAttributes();
         var modifiers = ParseParameterModifiers();
         var type = ParseExpectedType();
 
         var identifier = ExpectIdentifier();
 
-        return new ParameterNode(modifiers, type, identifier);
+        return new ParameterNode(attributes, modifiers, type, identifier);
     }
 
     private ImmutableArray<SyntaxToken> ParseParameterModifiers()
