@@ -289,4 +289,22 @@ public static class TokenKindExtensions
             _ => false
         };
     }
+
+    public static bool CanStartExpression(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Identifier => true,
+
+            TokenKind.Plus => true,
+            TokenKind.Minus => true,
+            TokenKind.Exclamation => true,
+            TokenKind.Tilde => true,
+            TokenKind.PlusPlus => true,
+            TokenKind.MinusMinus => true,
+
+            TokenKind.OpenParen => true,
+            _ => false
+        };
+    }
 }

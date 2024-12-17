@@ -1332,26 +1332,41 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return parserContext switch
         {
             ParserContext.Namespace => tokenKind.IsModifier() ||
-                                       tokenKind is TokenKind.Namespace or TokenKind.Class or TokenKind.Struct
+                                       tokenKind is TokenKind.Namespace
+                                           or TokenKind.Class
+                                           or TokenKind.Struct
                                            or TokenKind.Enum
                                            or TokenKind.OpenBracket,
-            ParserContext.Type => tokenKind.IsModifier() || tokenKind.IsPredefinedType() ||
-                                  tokenKind is TokenKind.Class or TokenKind.Struct or TokenKind.Enum
-                                      or TokenKind.Identifier or TokenKind.CloseBrace,
-            ParserContext.Delegate => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
+            ParserContext.Type => tokenKind.IsModifier() ||
+                                  tokenKind.IsPredefinedType() ||
+                                  tokenKind is TokenKind.Class
+                                      or TokenKind.Struct
+                                      or TokenKind.Enum
+                                      or TokenKind.Identifier
+                                      or TokenKind.CloseBrace,
+            ParserContext.Delegate => tokenKind.IsPredefinedType() ||
+                                      tokenKind.IsParameterModifier() ||
                                       tokenKind is TokenKind.Identifier,
-            ParserContext.ParameterList => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier() ||
-                                           tokenKind is TokenKind.Identifier or TokenKind.CloseParen,
-            ParserContext.AttributeList => tokenKind is TokenKind.Identifier or TokenKind.Comma
+            ParserContext.ParameterList => tokenKind.IsPredefinedType() ||
+                                           tokenKind.IsParameterModifier() ||
+                                           tokenKind is TokenKind.Identifier
+                                               or TokenKind.CloseParen,
+            ParserContext.AttributeList => tokenKind is TokenKind.Identifier
+                or TokenKind.Comma
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
-            ParserContext.EnumMember => tokenKind is TokenKind.Identifier or TokenKind.CloseBrace
+            ParserContext.EnumMember => tokenKind is TokenKind.Identifier
+                or TokenKind.CloseBrace
                 or TokenKind.CloseBracket
                 or TokenKind.CloseParen,
-            ParserContext.Method => tokenKind.IsPredefinedType() || tokenKind is TokenKind.Identifier
-                or TokenKind.Semicolon or TokenKind.OpenBrace
-                or TokenKind.CloseBrace,
-            ParserContext.Property => tokenKind is TokenKind.Get or TokenKind.Set or TokenKind.OpenBrace
+            ParserContext.Method => tokenKind.IsPredefinedType() ||
+                                    tokenKind.CanStartExpression() ||
+                                    tokenKind is TokenKind.Semicolon
+                                        or TokenKind.OpenBrace
+                                        or TokenKind.CloseBrace,
+            ParserContext.Property => tokenKind is TokenKind.Get
+                or TokenKind.Set
+                or TokenKind.OpenBrace
                 or TokenKind.CloseBrace,
             _ => false
         };
