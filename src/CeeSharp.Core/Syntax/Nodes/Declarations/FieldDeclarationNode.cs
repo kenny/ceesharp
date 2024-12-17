@@ -29,7 +29,7 @@ public sealed record FieldDeclarationNode(
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         foreach (var child in Declarators.Elements)
             yield return child;
     }

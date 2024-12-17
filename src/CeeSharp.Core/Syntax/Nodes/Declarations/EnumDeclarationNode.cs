@@ -30,7 +30,7 @@ public sealed record EnumDeclarationNode(
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         foreach (var child in Members)
             yield return child;
     }

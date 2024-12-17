@@ -11,5 +11,5 @@ public enum ParserContext
     AttributeList,
     EnumMember,
     Property,
-    Statement,
-} 
+    Statement
+}

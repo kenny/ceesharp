@@ -1127,7 +1127,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             if (isInErrorRecovery)
             {
                 Synchronize(parserContext, TokenKind.Semicolon, TokenKind.CloseBrace);
-                
+
                 if (Current.Kind == TokenKind.CloseBrace)
                     break;
             }
@@ -1168,7 +1168,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
     }
-    
+
     private ExpressionNode ParseExpression()
     {
         return ParseAssignmentExpression();
@@ -1191,17 +1191,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var condition = ParseLogicalOrExpression();
 
-        if (Current.Kind != TokenKind.Question) 
+        if (Current.Kind != TokenKind.Question)
             return condition;
-        
+
         var questionToken = Expect(TokenKind.Question);
         var ifTrue = ParseExpression();
         var colonToken = Expect(TokenKind.Colon, ":");
         var ifFalse = ParseExpression();
-            
+
         return new ConditionalExpressionNode(condition, questionToken, ifTrue, colonToken, ifFalse);
     }
-    
+
     private ExpressionNode ParseLogicalOrExpression()
     {
         var left = ParseLogicalAndExpression();
@@ -1249,7 +1249,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var left = ParseAdditiveExpression();
 
         while (true)
-        {
             switch (Current.Kind)
             {
                 case TokenKind.Is:
@@ -1257,7 +1256,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     var isType = ParseExpectedType();
                     left = new IsExpressionNode(left, isKeyword, isType);
                     break;
-                
+
                 case TokenKind.As:
                     var asKeyword = Expect(TokenKind.As);
                     var asType = ParseExpectedType();
@@ -1267,15 +1266,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 default:
                     if (!Current.Kind.IsRelationalOperator())
                         return left;
-                    
+
                     var operatorToken = Expect(Current.Kind);
                     var right = ParseAdditiveExpression();
                     left = new BinaryExpressionNode(left, operatorToken, right);
                     break;
             }
-        }
     }
-    
+
     private ExpressionNode ParseAdditiveExpression()
     {
         var left = ParseMultiplicativeExpression();
@@ -1323,7 +1321,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return expression;
     }
-    
+
     private ExpressionNode ParsePrimaryExpression()
     {
         return new IdentifierExpressionNode(ExpectIdentifier());

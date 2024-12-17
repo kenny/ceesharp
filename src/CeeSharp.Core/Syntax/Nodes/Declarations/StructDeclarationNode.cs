@@ -32,7 +32,7 @@ public sealed record StructDeclarationNode(
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         foreach (var child in Declarations)
             yield return child;
     }

@@ -30,15 +30,15 @@ public sealed record PropertyDeclarationNode(
             or TokenKind.Abstract
             or TokenKind.Extern;
     }
-    
+
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         if (ExplicitInterface.HasValue)
             yield return ExplicitInterface.Element;
-        
+
         foreach (var child in Accessors)
             yield return child;
     }

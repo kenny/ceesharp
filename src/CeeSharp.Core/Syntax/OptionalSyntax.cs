@@ -12,7 +12,10 @@ public readonly struct OptionalSyntax<TElement>(TElement? element)
 
     public static readonly OptionalSyntax<TElement> None = new();
 
-    public static implicit operator OptionalSyntax<TElement>(TElement element) => new(element);
+    public static implicit operator OptionalSyntax<TElement>(TElement element)
+    {
+        return new OptionalSyntax<TElement>(element);
+    }
 }
 
 public static class OptionalSyntax

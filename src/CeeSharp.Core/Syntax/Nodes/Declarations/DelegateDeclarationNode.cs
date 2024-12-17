@@ -15,6 +15,8 @@ public sealed record DelegateDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxToken Semicolon) : DeclarationNode, IModifierValidator
 {
+    public override DeclarationKind DeclarationKind => DeclarationKind.Delegate;
+
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)
@@ -26,13 +28,11 @@ public sealed record DelegateDeclarationNode(
             or TokenKind.Private;
     }
 
-    public override DeclarationKind DeclarationKind => DeclarationKind.Delegate;
-    
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         foreach (var child in Parameters.Elements)
             yield return child;
     }

@@ -13,7 +13,7 @@ public sealed record CompilationUnitNode(
     {
         foreach (var child in Usings)
             yield return child;
-        
+
         foreach (var child in Attributes)
             yield return child;
 

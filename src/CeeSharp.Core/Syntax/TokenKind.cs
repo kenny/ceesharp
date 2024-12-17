@@ -232,7 +232,7 @@ public static class TokenKindExtensions
             _ => false
         };
     }
-    
+
     public static bool IsEqualityOperator(this TokenKind kind)
     {
         return kind switch
@@ -242,7 +242,7 @@ public static class TokenKindExtensions
             _ => false
         };
     }
-    
+
     public static bool IsRelationalOperator(this TokenKind kind)
     {
         return kind switch
@@ -264,7 +264,7 @@ public static class TokenKindExtensions
             _ => false
         };
     }
-    
+
     public static bool IsMultiplicativeOperator(this TokenKind kind)
     {
         return kind switch

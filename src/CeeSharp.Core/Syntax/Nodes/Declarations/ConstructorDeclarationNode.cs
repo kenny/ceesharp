@@ -23,7 +23,7 @@ public sealed record ConstructorDeclarationNode(
             or TokenKind.Static
             or TokenKind.Extern;
     }
-    
+
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)
