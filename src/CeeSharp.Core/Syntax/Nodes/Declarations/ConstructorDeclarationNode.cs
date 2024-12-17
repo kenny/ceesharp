@@ -10,7 +10,7 @@ public sealed record ConstructorDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
-    SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
+    BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Constructor;
 
@@ -32,7 +32,7 @@ public sealed record ConstructorDeclarationNode(
         foreach (var child in Parameters.Elements)
             yield return child;
 
-        if (BlockOrSemicolon is SyntaxNode blockNode)
-            yield return blockNode;
+        if (BlockOrSemicolon.IsLeft)
+            yield return BlockOrSemicolon.LeftValue;
     }
 }

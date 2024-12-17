@@ -13,7 +13,7 @@ public sealed record MethodDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
-    SyntaxElement BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
+    BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
     public override DeclarationKind DeclarationKind => DeclarationKind.Method;
 
@@ -42,7 +42,7 @@ public sealed record MethodDeclarationNode(
         foreach (var child in Parameters.Elements)
             yield return child;
 
-        if (BlockOrSemicolon is SyntaxNode blockNode)
-            yield return blockNode;
+        if (BlockOrSemicolon.IsLeft)
+            yield return BlockOrSemicolon.LeftValue;
     }
 }

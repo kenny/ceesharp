@@ -791,7 +791,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var parameters = ParseParameterList(parserContext, TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
-        SyntaxElement blockOrSemicolon = Current.Kind switch
+        BlockNodeOrToken blockOrSemicolon = Current.Kind switch
         {
             TokenKind.OpenBrace => ParseBlockStatement(ParserContext.Method),
             _ => Expect(TokenKind.Semicolon, ";")
@@ -822,7 +822,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var parameters = ParseParameterList(parserContext, TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
-        SyntaxElement blockOrSemicolon = Current.Kind switch
+        BlockNodeOrToken blockOrSemicolon = Current.Kind switch
         {
             TokenKind.OpenBrace => ParseBlockStatement(ParserContext.Method),
             _ => Expect(TokenKind.Semicolon, ";")
