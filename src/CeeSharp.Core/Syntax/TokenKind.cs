@@ -214,169 +214,211 @@ public static class TokenKindExtensions
         };
     }
 
-    public static bool IsAssignmentOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsAssignmentOperator(this TokenKind tokenKind)
     {
-        TokenKind.Assign
-            or TokenKind.PlusAssign
-            or TokenKind.MinusAssign
-            or TokenKind.TimesAssign
-            or TokenKind.DivideAssign
-            or TokenKind.ModuloAssign
-            or TokenKind.AndAssign
-            or TokenKind.OrAssign
-            or TokenKind.XorAssign
-            or TokenKind.LeftShiftAssign
-            or TokenKind.RightShiftAssign => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Assign
+                or TokenKind.PlusAssign
+                or TokenKind.MinusAssign
+                or TokenKind.TimesAssign
+                or TokenKind.DivideAssign
+                or TokenKind.ModuloAssign
+                or TokenKind.AndAssign
+                or TokenKind.OrAssign
+                or TokenKind.XorAssign
+                or TokenKind.LeftShiftAssign
+                or TokenKind.RightShiftAssign => true,
+            _ => false
+        };
+    }
 
-    public static bool IsEqualityOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsEqualityOperator(this TokenKind tokenKind)
     {
-        TokenKind.Equal
-            or TokenKind.NotEqual => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Equal
+                or TokenKind.NotEqual => true,
+            _ => false
+        };
+    }
 
-    public static bool IsRelationalOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsRelationalOperator(this TokenKind tokenKind)
     {
-        TokenKind.LessThan
-            or TokenKind.GreaterThan
-            or TokenKind.LessThanOrEqual
-            or TokenKind.GreaterThanOrEqual => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.LessThan
+                or TokenKind.GreaterThan
+                or TokenKind.LessThanOrEqual
+                or TokenKind.GreaterThanOrEqual => true,
+            _ => false
+        };
+    }
 
-    public static bool IsAdditiveOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsAdditiveOperator(this TokenKind tokenKind)
     {
-        TokenKind.Plus
-            or TokenKind.Minus => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Plus
+                or TokenKind.Minus => true,
+            _ => false
+        };
+    }
 
-    public static bool IsMultiplicativeOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsMultiplicativeOperator(this TokenKind tokenKind)
     {
-        TokenKind.Asterisk
-            or TokenKind.Divide
-            or TokenKind.Modulo => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Asterisk
+                or TokenKind.Divide
+                or TokenKind.Modulo => true,
+            _ => false
+        };
+    }
 
-    public static bool IsUnaryOperator(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsUnaryOperator(this TokenKind tokenKind)
     {
-        TokenKind.Plus
-            or TokenKind.Minus
-            or TokenKind.Exclamation
-            or TokenKind.Tilde
-            or TokenKind.PlusPlus
-            or TokenKind.MinusMinus => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Plus
+                or TokenKind.Minus
+                or TokenKind.Exclamation
+                or TokenKind.Tilde
+                or TokenKind.PlusPlus
+                or TokenKind.MinusMinus => true,
+            _ => false
+        };
+    }
 
-    public static bool CanStartExpression(this TokenKind tokenKind) => tokenKind switch
+    public static bool CanStartExpression(this TokenKind tokenKind)
     {
-        TokenKind.OpenParen
-            or TokenKind.This
-            or TokenKind.Base
-            or TokenKind.New
-            or TokenKind.Typeof
-            or TokenKind.Default
-            or TokenKind.Sizeof
-            or TokenKind.Stackalloc
-            or TokenKind.Identifier => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.OpenParen
+                or TokenKind.This
+                or TokenKind.Base
+                or TokenKind.New
+                or TokenKind.Typeof
+                or TokenKind.Default
+                or TokenKind.Sizeof
+                or TokenKind.Stackalloc
+                or TokenKind.Identifier => true,
+            _ => false
+        };
+    }
 
-    public static bool IsValidInNamespace(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInNamespace(this TokenKind tokenKind)
     {
-        // Declarations that can appear in namespace
-        TokenKind.Namespace
-            or TokenKind.Class
-            or TokenKind.Struct
-            or TokenKind.Enum
-            or TokenKind.Interface
-            or TokenKind.Delegate
-            or TokenKind.Using
-            or TokenKind.OpenBracket => true,
-        _ => tokenKind.IsModifier()
-    };
+        return tokenKind switch
+        {
+            // Declarations that can appear in namespace
+            TokenKind.Namespace
+                or TokenKind.Class
+                or TokenKind.Struct
+                or TokenKind.Enum
+                or TokenKind.Interface
+                or TokenKind.Delegate
+                or TokenKind.Using
+                or TokenKind.OpenBracket => true,
+            _ => tokenKind.IsModifier()
+        };
+    }
 
-    public static bool IsValidInType(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInType(this TokenKind tokenKind)
     {
-        TokenKind.Class
-            or TokenKind.Struct
-            or TokenKind.Enum
-            or TokenKind.Interface
-            or TokenKind.Delegate
-            or TokenKind.Event
-            or TokenKind.Operator
-            or TokenKind.Implicit
-            or TokenKind.Explicit
-            or TokenKind.Identifier
-            or TokenKind.CloseBrace
-            or TokenKind.OpenBracket => true,
-        _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType()
-    };
+        return tokenKind switch
+        {
+            TokenKind.Class
+                or TokenKind.Struct
+                or TokenKind.Enum
+                or TokenKind.Interface
+                or TokenKind.Delegate
+                or TokenKind.Event
+                or TokenKind.Operator
+                or TokenKind.Implicit
+                or TokenKind.Explicit
+                or TokenKind.Identifier
+                or TokenKind.CloseBrace
+                or TokenKind.OpenBracket => true,
+            _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType()
+        };
+    }
 
-    public static bool IsValidInEnumMember(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInEnumMember(this TokenKind tokenKind)
     {
-        TokenKind.Identifier
-            or TokenKind.CloseBrace
-            or TokenKind.OpenBracket
-            or TokenKind.Comma => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Identifier
+                or TokenKind.CloseBrace
+                or TokenKind.OpenBracket
+                or TokenKind.Comma => true,
+            _ => false
+        };
+    }
 
-    public static bool IsValidInParameterList(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInParameterList(this TokenKind tokenKind)
     {
-        TokenKind.Identifier
-            or TokenKind.CloseParen
-            or TokenKind.Comma
-            or TokenKind.OpenBracket => true,
-        _ => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier()
-    };
+        return tokenKind switch
+        {
+            TokenKind.Identifier
+                or TokenKind.CloseParen
+                or TokenKind.Comma
+                or TokenKind.OpenBracket => true,
+            _ => tokenKind.IsPredefinedType() || tokenKind.IsParameterModifier()
+        };
+    }
 
-    public static bool IsValidInAttributeList(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInAttributeList(this TokenKind tokenKind)
     {
-        TokenKind.Identifier
-            or TokenKind.CloseBracket
-            or TokenKind.Comma
-            or TokenKind.OpenParen
-            or TokenKind.CloseParen => true,
-        _ => false
-    };
+        return tokenKind switch
+        {
+            TokenKind.Identifier
+                or TokenKind.CloseBracket
+                or TokenKind.Comma
+                or TokenKind.OpenParen
+                or TokenKind.CloseParen => true,
+            _ => false
+        };
+    }
 
-    public static bool IsValidInProperty(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInProperty(this TokenKind tokenKind)
     {
-        TokenKind.Get
-            or TokenKind.Set
-            or TokenKind.OpenBrace
-            or TokenKind.CloseBrace
-            or TokenKind.OpenBracket => true,
-        _ => tokenKind.IsModifier()
-    };
+        return tokenKind switch
+        {
+            TokenKind.Get
+                or TokenKind.Set
+                or TokenKind.OpenBrace
+                or TokenKind.CloseBrace
+                or TokenKind.OpenBracket => true,
+            _ => tokenKind.IsModifier()
+        };
+    }
 
-    public static bool IsValidInStatement(this TokenKind tokenKind) => tokenKind switch
+    public static bool IsValidInStatement(this TokenKind tokenKind)
     {
-        TokenKind.If
-            or TokenKind.For
-            or TokenKind.Foreach
-            or TokenKind.While
-            or TokenKind.Do
-            or TokenKind.Switch
-            or TokenKind.Break
-            or TokenKind.Continue
-            or TokenKind.Return
-            or TokenKind.Throw
-            or TokenKind.Try
-            or TokenKind.Using
-            or TokenKind.Fixed
-            or TokenKind.Lock
-            or TokenKind.Checked
-            or TokenKind.Unchecked
-            or TokenKind.Unsafe
-            or TokenKind.Semicolon
-            or TokenKind.OpenBrace
-            or TokenKind.CloseBrace => true,
-        _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType() || tokenKind.CanStartExpression()
-    };
+        return tokenKind switch
+        {
+            TokenKind.If
+                or TokenKind.For
+                or TokenKind.Foreach
+                or TokenKind.While
+                or TokenKind.Do
+                or TokenKind.Switch
+                or TokenKind.Break
+                or TokenKind.Continue
+                or TokenKind.Return
+                or TokenKind.Throw
+                or TokenKind.Try
+                or TokenKind.Using
+                or TokenKind.Fixed
+                or TokenKind.Lock
+                or TokenKind.Checked
+                or TokenKind.Unchecked
+                or TokenKind.Unsafe
+                or TokenKind.Semicolon
+                or TokenKind.OpenBrace
+                or TokenKind.CloseBrace => true,
+            _ => tokenKind.IsModifier() || tokenKind.IsPredefinedType() || tokenKind.CanStartExpression()
+        };
+    }
 }

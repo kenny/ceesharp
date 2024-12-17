@@ -10,10 +10,10 @@ namespace CeeSharp.Core.Parsing;
 
 public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 {
-    private readonly ImmutableArray<SyntaxTrivia>.Builder skippedTokens = ImmutableArray.CreateBuilder<SyntaxTrivia>();
-    private bool isInErrorRecovery;
     private readonly Stack<ParserContext> contextStack = [];
+    private readonly ImmutableArray<SyntaxTrivia>.Builder skippedTokens = ImmutableArray.CreateBuilder<SyntaxTrivia>();
     private ParserContext currentContext = ParserContext.None;
+    private bool isInErrorRecovery;
 
     private SyntaxToken Current => tokenStream.Current;
 
@@ -23,7 +23,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     public CompilationUnitNode Parse()
     {
         using var _ = PushContext(ParserContext.Namespace);
-        
+
         var usings = ParseUsings();
         var attributes = ParseAttributes();
         var declarations = ParseNamespaceOrTypeDeclarations();
@@ -33,7 +33,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         isInErrorRecovery = false;
         skippedTokens.Clear();
-        
+
         return new CompilationUnitNode(usings, attributes, declarations, endOfFile);
     }
 
@@ -659,7 +659,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         ImmutableArray<SyntaxToken> modifiers)
     {
         using var _ = PushContext(ParserContext.Type);
-        
+
         switch (Current.Kind)
         {
             case TokenKind.Class:
@@ -696,7 +696,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private ImmutableArray<EnumMemberDeclarationNode> ParseEnumMemberDeclarations()
     {
         using var _ = PushContext(ParserContext.EnumMember);
-        
+
         var members = ImmutableArray.CreateBuilder<EnumMemberDeclarationNode>();
 
         while (!isInErrorRecovery && Current.Kind is not (TokenKind.EndOfFile or TokenKind.CloseBrace))
@@ -722,7 +722,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private EnumMemberDeclarationNode ParseEnumMemberDeclaration(ImmutableArray<AttributeSectionNode> attributes)
     {
         using var _ = PushContext(ParserContext.EnumMember);
-        
+
         var identifier = ExpectIdentifier();
         var assign = ExpectOptional(TokenKind.Assign);
         var expression = assign.HasValue switch
@@ -735,7 +735,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new EnumMemberDeclarationNode(attributes, identifier, assign, expression, comma);
     }
 
-    private DelegateDeclarationNode ParseDelegateDeclaration(ImmutableArray<AttributeSectionNode> attributes, ImmutableArray<SyntaxToken> modifiers)
+    private DelegateDeclarationNode ParseDelegateDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
     {
         ValidateModifiers<DelegateDeclarationNode>(modifiers);
 
@@ -995,7 +996,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     {
                         accessors.Add(HandleIncompleteAccessor(accessorAttributes, accessorModifiers));
                         isInErrorRecovery = false;
-                        
+
                         break;
                     }
 
@@ -1106,7 +1107,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private StatementNode ParseStatement()
     {
         using var _ = PushContext(ParserContext.Statement);
-        
+
         return Current.Kind switch
         {
             TokenKind.OpenBrace => ParseBlockStatement(),
@@ -1345,10 +1346,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private bool IsTokenValidInPrecedingContext(TokenKind tokenKind)
     {
         foreach (var context in contextStack)
-        {
             if (IsTokenValidInContext(context, tokenKind))
                 return true;
-        }
 
         return false;
     }
