@@ -60,7 +60,7 @@ public enum TokenKind
     Property,
     Protected,
     Public,
-    Readonly,
+    ReadOnly,
     Ref,
     Return,
     Sbyte,
@@ -68,7 +68,7 @@ public enum TokenKind
     Set,
     Short,
     Sizeof,
-    Stackalloc,
+    StackAlloc,
     Static,
     String,
     Struct,
@@ -172,7 +172,7 @@ public static class TokenKindExtensions
                 or TokenKind.Virtual
                 or TokenKind.Extern
                 or TokenKind.Override
-                or TokenKind.Readonly
+                or TokenKind.ReadOnly
                 or TokenKind.Volatile
                 or TokenKind.Unsafe
                 or TokenKind.New => true,
@@ -301,7 +301,7 @@ public static class TokenKindExtensions
                 or TokenKind.Typeof
                 or TokenKind.Default
                 or TokenKind.Sizeof
-                or TokenKind.Stackalloc
+                or TokenKind.StackAlloc
                 or TokenKind.Identifier => true,
             _ => false
         };

@@ -21,7 +21,7 @@ public sealed record FieldDeclarationNode(
             or TokenKind.Internal
             or TokenKind.Private
             or TokenKind.Static
-            or TokenKind.Readonly
+            or TokenKind.ReadOnly
             or TokenKind.Volatile;
     }
 
