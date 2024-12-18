@@ -15,8 +15,6 @@ public sealed record MethodDeclarationNode(
     SyntaxToken CloseParen,
     BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Method;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.Public

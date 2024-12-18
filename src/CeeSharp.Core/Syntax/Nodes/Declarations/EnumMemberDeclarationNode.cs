@@ -10,8 +10,6 @@ public sealed record EnumMemberDeclarationNode(
     OptionalSyntax<ExpressionNode> Expression,
     OptionalSyntax<SyntaxToken> Comma) : MemberDeclarationNode
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.EnumMember;
-
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)

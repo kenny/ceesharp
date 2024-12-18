@@ -11,8 +11,6 @@ public sealed record NamespaceDeclarationNode(
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : DeclarationNode
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Namespace;
-
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Usings)

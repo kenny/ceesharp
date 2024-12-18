@@ -11,8 +11,6 @@ public sealed record FieldDeclarationNode(
     SeparatedSyntaxList<VariableDeclaratorNode> Declarators,
     SyntaxToken Semicolon) : MemberDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Field;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.New

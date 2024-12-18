@@ -14,8 +14,6 @@ public sealed record PropertyDeclarationNode(
     ImmutableArray<AccessorDeclarationNode> Accessors,
     SyntaxToken CloseBrace) : MemberDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Property;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.New

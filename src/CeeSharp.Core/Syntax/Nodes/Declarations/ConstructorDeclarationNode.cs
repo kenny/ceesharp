@@ -12,8 +12,6 @@ public sealed record ConstructorDeclarationNode(
     SyntaxToken CloseParen,
     BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Constructor;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.Public

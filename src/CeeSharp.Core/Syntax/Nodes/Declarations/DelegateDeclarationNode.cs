@@ -15,8 +15,6 @@ public sealed record DelegateDeclarationNode(
     SyntaxToken CloseParen,
     SyntaxToken Semicolon) : DeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Delegate;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)

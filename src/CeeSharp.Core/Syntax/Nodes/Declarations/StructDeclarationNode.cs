@@ -12,8 +12,6 @@ public sealed record StructDeclarationNode(
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Struct;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)

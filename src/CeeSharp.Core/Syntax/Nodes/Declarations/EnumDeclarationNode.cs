@@ -13,8 +13,6 @@ public sealed record EnumDeclarationNode(
     SyntaxToken CloseBrace,
     OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IModifierValidator
 {
-    public override DeclarationKind DeclarationKind => DeclarationKind.Enum;
-
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         if (parserContext != ParserContext.Namespace && modifier == TokenKind.New)
