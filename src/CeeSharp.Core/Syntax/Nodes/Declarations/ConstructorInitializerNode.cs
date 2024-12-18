@@ -4,4 +4,12 @@ public sealed record ConstructorInitializerNode(
     SyntaxToken Colon,
     SyntaxToken BaseOrThisKeyword,
     SyntaxToken OpenParen,
-    SyntaxToken CloseParen) : SyntaxNode;
+    SeparatedSyntaxList<ArgumentNode> Arguments,
+    SyntaxToken CloseParen) : SyntaxNode
+{
+    public override IEnumerable<SyntaxNode> GetChildren()
+    {
+        foreach (var child in Arguments.Elements)
+            yield return child;
+    }
+}

@@ -6,6 +6,10 @@ public sealed record SeparatedSyntaxList<TNode>(ImmutableArray<TNode> Elements, 
     : SyntaxElement
     where TNode : SyntaxNode
 {
+    public static SeparatedSyntaxList<TNode> Empty { get; } = new(
+        ImmutableArray<TNode>.Empty,
+        ImmutableArray<SyntaxToken>.Empty);
+
     public IEnumerable<(TNode, SyntaxToken?)> GetSeparatedElements()
     {
         var separatorIndex = 0;

@@ -943,18 +943,53 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 colon,
                 SynthesizeToken(TokenKind.This),
                 SynthesizeToken(TokenKind.OpenParen),
+                SeparatedSyntaxList<ArgumentNode>.Empty,
                 SynthesizeToken(TokenKind.CloseParen)));
         }
 
         var baseOrThis = Expect(Current.Kind);
         var openParen = Expect(TokenKind.OpenParen, "(");
+        var arguments = ParseArgumentList();
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         return OptionalSyntax.With(new ConstructorInitializerNode(
             colon,
             baseOrThis,
             openParen,
+            arguments,
             closeParen));
+    }
+
+    private SeparatedSyntaxList<ArgumentNode> ParseArgumentList()
+    {
+        var arguments = ImmutableArray.CreateBuilder<ArgumentNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        while (Current.Kind != TokenKind.CloseParen && Current.Kind != TokenKind.EndOfFile)
+        {
+            if (arguments.Count > 0)
+            {
+                if (Current.Kind != TokenKind.Comma)
+                    break;
+
+                separators.Add(Expect(TokenKind.Comma, ","));
+
+                if (isInErrorRecovery)
+                    Synchronize();
+            }
+
+            var argument = ParseArgument();
+            arguments.Add(argument);
+        }
+
+        return new SeparatedSyntaxList<ArgumentNode>(arguments.ToImmutable(), separators.ToImmutable());
+    }
+
+    private ArgumentNode ParseArgument()
+    {
+        var expression = ParseExpression();
+
+        return new ArgumentNode(expression);
     }
 
     private FieldDeclarationNode ParseFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
