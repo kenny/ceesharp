@@ -10,6 +10,7 @@ public sealed record ConstructorDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
+    OptionalSyntax<ConstructorInitializerNode> Initializer,
     BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
@@ -29,6 +30,9 @@ public sealed record ConstructorDeclarationNode(
 
         foreach (var child in Parameters.Elements)
             yield return child;
+
+        if (Initializer.HasValue)
+            yield return Initializer.Element;
 
         if (BlockOrSemicolon.IsLeft)
             yield return BlockOrSemicolon.LeftValue;

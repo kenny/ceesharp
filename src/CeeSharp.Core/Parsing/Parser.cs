@@ -80,6 +80,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return token;
     }
 
+    private SyntaxToken SynthesizeToken(TokenKind kind)
+    {
+        return new SyntaxToken(kind, "", Previous.EndPosition);
+    }
+
     private bool TryExpect(TokenKind kind, out SyntaxToken token)
     {
         if (Current.Kind == kind)
@@ -900,6 +905,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openParen = Expect(TokenKind.OpenParen, "(");
         var parameters = ParseParameterList(TokenKind.CloseParen);
         var closeParen = Expect(TokenKind.CloseParen, ")");
+        var initializer = ParseConstructorInitializer();
 
         BlockNodeOrToken blockOrSemicolon = Current.Kind switch
         {
@@ -916,7 +922,39 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             openParen,
             parameters,
             closeParen,
+            initializer,
             blockOrSemicolon);
+    }
+
+    private OptionalSyntax<ConstructorInitializerNode> ParseConstructorInitializer()
+    {
+        if (Current.Kind != TokenKind.Colon)
+            return OptionalSyntax<ConstructorInitializerNode>.None;
+
+        var colon = Expect(TokenKind.Colon);
+
+        if (Current.Kind is not (TokenKind.Base or TokenKind.This))
+        {
+            diagnostics.ReportError(Current.Position, "Expected 'base' or 'this'");
+
+            isInErrorRecovery = true;
+
+            return OptionalSyntax.With(new ConstructorInitializerNode(
+                colon,
+                SynthesizeToken(TokenKind.This),
+                SynthesizeToken(TokenKind.OpenParen),
+                SynthesizeToken(TokenKind.CloseParen)));
+        }
+
+        var baseOrThis = Expect(Current.Kind);
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return OptionalSyntax.With(new ConstructorInitializerNode(
+            colon,
+            baseOrThis,
+            openParen,
+            closeParen));
     }
 
     private FieldDeclarationNode ParseFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
