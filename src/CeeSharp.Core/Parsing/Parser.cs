@@ -987,9 +987,16 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ArgumentNode ParseArgument()
     {
+        var refOrOut = Current.Kind switch
+        {
+            TokenKind.Ref or TokenKind.Out =>
+                OptionalSyntax.With(Expect(Current.Kind)),
+            _ => OptionalSyntax<SyntaxToken>.None
+        };
+
         var expression = ParseExpression();
 
-        return new ArgumentNode(expression);
+        return new ArgumentNode(refOrOut, expression);
     }
 
     private FieldDeclarationNode ParseFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
