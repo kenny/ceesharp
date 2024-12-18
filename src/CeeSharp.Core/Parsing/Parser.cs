@@ -582,22 +582,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     };
 
                     if (!isInErrorRecovery)
-                    {
-                        if (Current.Kind == TokenKind.This)
-                            return ParseIndexerDeclaration(attributes, modifiers, type!,
-                                explicitInterface);
-
-
-                        switch (Lookahead.Kind)
+                        switch (Current.Kind)
                         {
-                            case TokenKind.OpenParen:
-                                return ParseMethodDeclaration(attributes, modifiers, type!,
+                            case TokenKind.This:
+                                return ParseIndexerDeclaration(attributes, modifiers, type!,
                                     explicitInterface);
-                            case TokenKind.OpenBrace:
-                                return ParsePropertyDeclaration(attributes, modifiers, type!,
-                                    explicitInterface);
+                            case TokenKind.Operator:
+                                return ParseOperatorDeclaration(attributes, modifiers, type!);
+                            default:
+                                switch (Lookahead.Kind)
+                                {
+                                    case TokenKind.OpenParen:
+                                        return ParseMethodDeclaration(attributes, modifiers, type!,
+                                            explicitInterface);
+                                    case TokenKind.OpenBrace:
+                                        return ParsePropertyDeclaration(attributes, modifiers, type!,
+                                            explicitInterface);
+                                }
+
+                                break;
                         }
-                    }
 
                     isInErrorRecovery = false;
 
@@ -621,21 +625,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     _ => OptionalSyntax<ExplicitInterfaceNode>.None
                 };
 
-                if (Current.Kind == TokenKind.This)
-                    return ParseIndexerDeclaration(attributes, modifiers, predefinedType!,
-                        explicitInterface);
-
-                switch (Lookahead.Kind)
+                switch (Current.Kind)
                 {
-                    case TokenKind.OpenParen:
-                        return ParseMethodDeclaration(attributes, modifiers, predefinedType!,
+                    case TokenKind.This:
+                        return ParseIndexerDeclaration(attributes, modifiers, predefinedType!,
                             explicitInterface);
-                    case TokenKind.OpenBrace:
-                        return ParsePropertyDeclaration(attributes, modifiers, predefinedType!,
-                            explicitInterface);
-                }
+                    case TokenKind.Operator:
+                        return ParseOperatorDeclaration(attributes, modifiers, predefinedType!);
+                    default:
+                        switch (Lookahead.Kind)
+                        {
+                            case TokenKind.OpenParen:
+                                return ParseMethodDeclaration(attributes, modifiers, predefinedType!,
+                                    explicitInterface);
+                            case TokenKind.OpenBrace:
+                                return ParsePropertyDeclaration(attributes, modifiers, predefinedType!,
+                                    explicitInterface);
+                        }
 
-                return null;
+                        return null;
+                }
             }
         }
     }
@@ -748,7 +757,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeParen = Expect(TokenKind.CloseParen, ")");
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
-        return new DelegateDeclarationNode(attributes, modifiers, enumKeyword, type!, identifier, openParen, parameters,
+        return new DelegateDeclarationNode(attributes, modifiers, enumKeyword, type, identifier, openParen, parameters,
             closeParen, semicolon);
     }
 
@@ -780,6 +789,41 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations,
             closeBrace);
+    }
+
+    private OperatorDeclarationNode ParseOperatorDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType)
+    {
+        ValidateModifiers<OperatorDeclarationNode>(modifiers);
+
+        var operatorKeyword = Expect(TokenKind.Operator, "operator");
+
+        var operatorToken = Current.Kind.IsOverloadableOperator() switch
+        {
+            true => Expect(Current.Kind),
+            false => Expect(TokenKind.Unknown)
+        };
+
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var parameters = ParseParameterList(TokenKind.CloseParen);
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        BlockNodeOrToken blockOrSemicolon = Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseBlockStatement(),
+            _ => Expect(TokenKind.Semicolon, ";")
+        };
+
+        return new OperatorDeclarationNode(
+            attributes,
+            modifiers,
+            returnType,
+            operatorKeyword,
+            operatorToken,
+            openParen,
+            parameters,
+            closeParen,
+            blockOrSemicolon);
     }
 
     private MethodDeclarationNode ParseMethodDeclaration(ImmutableArray<AttributeSectionNode> attributes,

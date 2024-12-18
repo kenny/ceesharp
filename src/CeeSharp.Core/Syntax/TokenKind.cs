@@ -290,6 +290,51 @@ public static class TokenKindExtensions
         };
     }
 
+    public static bool IsOverloadableUnaryOperator(this TokenKind tokenKind)
+    {
+        return tokenKind switch
+        {
+            TokenKind.Plus
+                or TokenKind.Minus
+                or TokenKind.Exclamation
+                or TokenKind.Tilde
+                or TokenKind.PlusPlus
+                or TokenKind.MinusMinus
+                or TokenKind.True
+                or TokenKind.False => true,
+            _ => false
+        };
+    }
+
+    public static bool IsOverloadableBinaryOperator(this TokenKind tokenKind)
+    {
+        return tokenKind switch
+        {
+            TokenKind.Plus
+                or TokenKind.Minus
+                or TokenKind.Asterisk
+                or TokenKind.Divide
+                or TokenKind.Modulo
+                or TokenKind.Ampersand
+                or TokenKind.Pipe
+                or TokenKind.Xor
+                or TokenKind.LeftShift
+                or TokenKind.RightShift
+                or TokenKind.Equal
+                or TokenKind.NotEqual
+                or TokenKind.GreaterThan
+                or TokenKind.LessThan
+                or TokenKind.GreaterThanOrEqual
+                or TokenKind.LessThanOrEqual => true,
+            _ => false
+        };
+    }
+
+    public static bool IsOverloadableOperator(this TokenKind tokenKind)
+    {
+        return IsOverloadableUnaryOperator(tokenKind) || IsOverloadableBinaryOperator(tokenKind);
+    }
+
     public static bool CanStartExpression(this TokenKind tokenKind)
     {
         return tokenKind switch
