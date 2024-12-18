@@ -356,7 +356,6 @@ public static class TokenKindExtensions
     {
         return tokenKind switch
         {
-            // Declarations that can appear in namespace
             TokenKind.Namespace
                 or TokenKind.Class
                 or TokenKind.Struct

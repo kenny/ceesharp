@@ -109,6 +109,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         skippedTokens.Clear();
 
+
         return false;
     }
 
@@ -567,6 +568,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Delegate:
                 return ParseTypeDeclaration(attributes, modifiers);
 
+            case TokenKind.Implicit or TokenKind.Explicit:
+                return ParseConversionOperatorDeclaration(attributes, modifiers);
+
             case TokenKind.Identifier when currentContext != ParserContext.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
@@ -789,6 +793,36 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations,
             closeBrace);
+    }
+
+    private ConversionOperatorDeclarationNode ParseConversionOperatorDeclaration(
+        ImmutableArray<AttributeSectionNode> attributes, ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<ConversionOperatorDeclarationNode>(modifiers);
+
+        var implicitOrExplicit = Expect(Current.Kind);
+        var operatorKeyword = Expect(TokenKind.Operator, "operator");
+        var conversionType = ParseExpectedType();
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var parameters = ParseParameterList(TokenKind.CloseParen);
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        BlockNodeOrToken blockOrSemicolon = Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseBlockStatement(),
+            _ => Expect(TokenKind.Semicolon, ";")
+        };
+
+        return new ConversionOperatorDeclarationNode(
+            attributes,
+            modifiers,
+            conversionType,
+            implicitOrExplicit,
+            operatorKeyword,
+            openParen,
+            parameters,
+            closeParen,
+            blockOrSemicolon);
     }
 
     private OperatorDeclarationNode ParseOperatorDeclaration(ImmutableArray<AttributeSectionNode> attributes,
