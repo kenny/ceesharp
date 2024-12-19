@@ -2,15 +2,15 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public sealed record SeparatedSyntaxList<TNode>(ImmutableArray<TNode> Elements, ImmutableArray<SyntaxToken> Separators)
+public sealed record SeparatedSyntaxList<TElement>(ImmutableArray<TElement> Elements, ImmutableArray<SyntaxToken> Separators)
     : SyntaxElement
-    where TNode : SyntaxNode
+    where TElement : SyntaxElement
 {
-    public static SeparatedSyntaxList<TNode> Empty { get; } = new(
-        ImmutableArray<TNode>.Empty,
+    public static SeparatedSyntaxList<TElement> Empty { get; } = new(
+        ImmutableArray<TElement>.Empty,
         ImmutableArray<SyntaxToken>.Empty);
 
-    public IEnumerable<(TNode, SyntaxToken?)> GetSeparatedElements()
+    public IEnumerable<(TElement, SyntaxToken?)> GetSeparatedElements()
     {
         var separatorIndex = 0;
 

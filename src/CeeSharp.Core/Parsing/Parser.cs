@@ -780,12 +780,43 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var classKeyword = Expect(TokenKind.Class, "class");
         var identifier = ExpectIdentifier();
+        var baseTypes = ParseBaseTypeList();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, openBrace, declarations,
+        return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, baseTypes, openBrace,
+            declarations,
             closeBrace);
+    }
+
+    private OptionalSyntax<BaseTypeListNode> ParseBaseTypeList()
+    {
+        if (Current.Kind != TokenKind.Colon)
+            return OptionalSyntax<BaseTypeListNode>.None;
+
+        var colon = Expect(TokenKind.Colon);
+        var types = ImmutableArray.CreateBuilder<TypeSyntax>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        types.Add(ParseQualifiedTypeExact());
+
+        while (Current.Kind == TokenKind.Comma)
+        {
+            var comma = Expect(TokenKind.Comma);
+            separators.Add(comma);
+
+            if (isInErrorRecovery)
+                Synchronize();
+
+            types.Add(ParseQualifiedTypeExact());
+        }
+
+        var baseTypes = new SeparatedSyntaxList<TypeSyntax>(
+            types.ToImmutable(),
+            separators.ToImmutable());
+
+        return OptionalSyntax.With(new BaseTypeListNode(colon, baseTypes));
     }
 
     private StructDeclarationNode ParseStructDeclaration(ImmutableArray<AttributeSectionNode> attributes,

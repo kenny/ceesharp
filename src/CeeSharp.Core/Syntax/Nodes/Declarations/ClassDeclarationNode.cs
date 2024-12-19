@@ -8,6 +8,7 @@ public sealed record ClassDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken ClassKeyword,
     SyntaxToken Identifier,
+    OptionalSyntax<BaseTypeListNode> BaseTypes,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
