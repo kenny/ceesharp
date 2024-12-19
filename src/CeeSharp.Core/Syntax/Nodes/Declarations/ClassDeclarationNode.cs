@@ -32,6 +32,9 @@ public sealed record ClassDeclarationNode(
         foreach (var child in Attributes)
             yield return child;
 
+        if (BaseTypes.HasValue)
+            yield return BaseTypes.Element;
+        
         foreach (var child in Declarations)
             yield return child;
     }

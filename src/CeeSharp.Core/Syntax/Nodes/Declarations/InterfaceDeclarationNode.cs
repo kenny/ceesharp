@@ -1,18 +1,18 @@
 using System.Collections.Immutable;
 using CeeSharp.Core.Parsing;
+using CeeSharp.Core.Syntax;
+using CeeSharp.Core.Syntax.Nodes;
+using CeeSharp.Core.Syntax.Nodes.Declarations;
 
-namespace CeeSharp.Core.Syntax.Nodes.Declarations;
-
-public sealed record EnumDeclarationNode(
+public sealed record InterfaceDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
     ImmutableArray<SyntaxToken> Modifiers,
-    SyntaxToken EnumKeyword,
+    SyntaxToken InterfaceKeyword,
     SyntaxToken Identifier,
-    OptionalSyntax<BaseTypeListNode> BaseType,
+    OptionalSyntax<BaseTypeListNode> BaseTypes,
     SyntaxToken OpenBrace,
-    ImmutableArray<EnumMemberDeclarationNode> Members,
-    SyntaxToken CloseBrace,
-    OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IModifierValidator
+    ImmutableArray<DeclarationNode> Declarations,
+    SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
@@ -20,20 +20,20 @@ public sealed record EnumDeclarationNode(
             return true;
 
         return modifier is TokenKind.Public
-            or TokenKind.Private
             or TokenKind.Protected
-            or TokenKind.Internal;
+            or TokenKind.Internal
+            or TokenKind.Private;
     }
-
+    
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)
             yield return child;
 
-        if (BaseType.HasValue)
-            yield return BaseType.Element;
-        
-        foreach (var child in Members)
+        if (BaseTypes.HasValue)
+            yield return BaseTypes.Element;
+
+        foreach (var child in Declarations)
             yield return child;
     }
 }

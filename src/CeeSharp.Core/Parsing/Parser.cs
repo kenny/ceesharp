@@ -471,6 +471,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Class:
             case TokenKind.Struct:
             case TokenKind.Enum:
+            case TokenKind.Interface:
+            case TokenKind.Delegate:
                 return ParseTypeDeclaration(attributes, modifiers);
             default:
                 if (!isInErrorRecovery)
@@ -570,6 +572,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Class:
             case TokenKind.Struct:
             case TokenKind.Enum:
+            case TokenKind.Interface:
             case TokenKind.Delegate:
                 return ParseTypeDeclaration(attributes, modifiers);
 
@@ -689,6 +692,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseStructDeclaration(attributes, modifiers);
             case TokenKind.Enum:
                 return ParseEnumDeclaration(attributes, modifiers);
+            case TokenKind.Interface:
+                return ParseInterfaceDeclaration(attributes, modifiers);
             case TokenKind.Delegate:
                 return ParseDelegateDeclaration(attributes, modifiers);
             default:
@@ -697,7 +702,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return null;
         }
     }
-
     private EnumDeclarationNode ParseEnumDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
@@ -849,6 +853,29 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
         return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, baseTypes, openBrace, declarations,
+            closeBrace);
+    }
+
+    private InterfaceDeclarationNode ParseInterfaceDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<InterfaceDeclarationNode>(modifiers);
+
+        var interfaceKeyword = Expect(TokenKind.Interface, "interface");
+        var identifier = ExpectIdentifier();
+        var baseTypes = ParseBaseTypeList();
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var declarations = ParseTypeDeclarations();
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new InterfaceDeclarationNode(
+            attributes,
+            modifiers,
+            interfaceKeyword,
+            identifier,
+            baseTypes,
+            openBrace,
+            declarations,
             closeBrace);
     }
 
