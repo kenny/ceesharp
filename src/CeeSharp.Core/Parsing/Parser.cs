@@ -1223,7 +1223,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             var isValidForContext = keywordKind switch
             {
                 TokenKind.Get or TokenKind.Set => currentContext == ParserContext.Property,
-                TokenKind.Add or TokenKind.Remove => currentContext == ParserContext.Event
+                TokenKind.Add or TokenKind.Remove => currentContext == ParserContext.Event,
+                _ => false
             };
 
             if (!isValidForContext)
