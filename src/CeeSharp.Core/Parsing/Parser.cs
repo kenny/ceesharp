@@ -981,7 +981,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private ConstructorDeclarationNode ParseConstructorDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
-        ValidateModifiers<MethodDeclarationNode>(modifiers);
+        ValidateModifiers<ConstructorDeclarationNode>(modifiers);
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
