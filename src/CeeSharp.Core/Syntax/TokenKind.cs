@@ -4,6 +4,7 @@ public enum TokenKind
 {
     // Keywords
     Abstract,
+    Add,
     As,
     Assembly,
     Base,
@@ -62,6 +63,7 @@ public enum TokenKind
     Public,
     ReadOnly,
     Ref,
+    Remove,
     Return,
     Sbyte,
     Sealed,

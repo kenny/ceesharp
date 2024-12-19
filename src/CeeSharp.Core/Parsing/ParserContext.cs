@@ -9,5 +9,6 @@ public enum ParserContext
     ParameterList,
     AttributeList,
     Property,
+    Event,
     Statement
 }

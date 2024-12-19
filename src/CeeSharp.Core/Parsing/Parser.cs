@@ -576,6 +576,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Implicit or TokenKind.Explicit:
                 return ParseConversionOperatorDeclaration(attributes, modifiers);
 
+            case TokenKind.Event:
+                return ParseEventDeclaration(attributes, modifiers);
+
             case TokenKind.Identifier when currentContext != ParserContext.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
@@ -999,12 +1002,62 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ArgumentNode(refOrOut, expression);
     }
 
+    private MemberDeclarationNode ParseEventDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        using var _ = PushContext(ParserContext.Event);
+
+        ValidateModifiers<EventDeclarationNode>(modifiers);
+
+        var eventKeyword = Expect(TokenKind.Event, "event");
+        var type = ParseExpectedType();
+
+        if (Lookahead.Kind is not (TokenKind.Dot or TokenKind.OpenBrace))
+            return ParseEventFieldDeclaration(attributes, modifiers, eventKeyword, type);
+
+        var explicitInterface = Lookahead.Kind switch
+        {
+            TokenKind.Dot => ParseExplicitInterface(),
+            _ => OptionalSyntax<ExplicitInterfaceNode>.None
+        };
+        var identifier = ExpectIdentifier();
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
+        var accessors = ParseAccessorDeclarations();
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new EventDeclarationNode(attributes, modifiers, eventKeyword, type, explicitInterface, identifier,
+            openBrace, accessors, closeBrace);
+    }
+
+    private MemberDeclarationNode ParseEventFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers, SyntaxToken eventKeyword, TypeSyntax type)
+    {
+        var variableDeclarators = ParseVariableDeclarators();
+        var semicolon = Expect(TokenKind.Semicolon);
+
+        return new EventFieldDeclarationNode(attributes, modifiers, eventKeyword, type, variableDeclarators, semicolon);
+    }
+
     private FieldDeclarationNode ParseFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers,
         TypeSyntax type)
     {
         ValidateModifiers<FieldDeclarationNode>(modifiers);
 
+        var variableDeclarators = ParseVariableDeclarators();
+
+        var semicolon = Expect(TokenKind.Semicolon);
+
+        return new FieldDeclarationNode(
+            attributes,
+            modifiers,
+            type,
+            variableDeclarators,
+            semicolon);
+    }
+
+    private SeparatedSyntaxList<VariableDeclaratorNode> ParseVariableDeclarators()
+    {
         var declarators = ImmutableArray.CreateBuilder<VariableDeclaratorNode>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
@@ -1018,17 +1071,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             separators.Add(comma);
         }
 
-        var variableDeclarators =
-            new SeparatedSyntaxList<VariableDeclaratorNode>(declarators.ToImmutable(), separators.ToImmutable());
-
-        var semicolon = Expect(TokenKind.Semicolon);
-
-        return new FieldDeclarationNode(
-            attributes,
-            modifiers,
-            type,
-            variableDeclarators,
-            semicolon);
+        return new SeparatedSyntaxList<VariableDeclaratorNode>(declarators.ToImmutable(), separators.ToImmutable());
     }
 
     private VariableDeclaratorNode ParseVariableDeclarator()
@@ -1139,14 +1182,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             {
                 "get" => Current with { Kind = TokenKind.Get },
                 "set" => Current with { Kind = TokenKind.Set },
+                "add" => Current with { Kind = TokenKind.Add },
+                "remove" => Current with { Kind = TokenKind.Remove },
                 _ => Current
             });
 
             var keywordKind = keyword.Element!.Kind;
 
-            if (keywordKind is not (TokenKind.Get or TokenKind.Set))
+            var isValidForContext = keywordKind switch
             {
-                diagnostics.ReportError(keyword.Element!.Position, "A get or set accessor expected");
+                TokenKind.Get or TokenKind.Set => currentContext == ParserContext.Property,
+                TokenKind.Add or TokenKind.Remove => currentContext == ParserContext.Event
+            };
+
+            if (!isValidForContext)
+            {
+                diagnostics.ReportError(keyword.Element!.Position,
+                    currentContext == ParserContext.Property
+                        ? "A get or set accessor expected"
+                        : "A add or remove accessor expected");
 
                 if (keywordKind is not (TokenKind.OpenBrace or TokenKind.Semicolon))
                 {
