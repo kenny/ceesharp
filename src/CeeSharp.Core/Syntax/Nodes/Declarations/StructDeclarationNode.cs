@@ -8,6 +8,7 @@ public sealed record StructDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken StructKeyword,
     SyntaxToken Identifier,
+    OptionalSyntax<BaseTypeListNode> BaseTypes,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
     SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator

@@ -826,11 +826,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var structKeyword = Expect(TokenKind.Struct, "struct");
         var identifier = ExpectIdentifier();
+        var baseTypes = ParseBaseTypeList();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, openBrace, declarations,
+        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, baseTypes, openBrace, declarations,
             closeBrace);
     }
 
