@@ -13,7 +13,7 @@ public sealed record OperatorDeclarationNode(
     SyntaxToken OpenParen,
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
-    BlockNodeOrToken BlockOrSemicolon) : DeclarationNode, IModifierValidator
+    BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
 { 
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
