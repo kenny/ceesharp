@@ -582,6 +582,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Event:
                 return ParseEventDeclaration(attributes, modifiers);
 
+            case TokenKind.Tilde:
+                return ParseDestructorDeclaration(attributes, modifiers);
+            
             case TokenKind.Identifier when currentContext != ParserContext.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
@@ -1037,6 +1040,34 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             openParen,
             arguments,
             closeParen));
+    }
+    
+    private DestructorDeclarationNode ParseDestructorDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
+    {
+        ValidateModifiers<DestructorDeclarationNode>(modifiers);
+
+        var tilde = Expect(TokenKind.Tilde, "~");
+        var identifier = ExpectIdentifier();
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        BlockNodeOrToken blockOrSemicolon = Current.Kind switch
+        {
+            TokenKind.OpenBrace => ParseBlockStatement(),
+            _ => Expect(TokenKind.Semicolon, ";")
+        };
+
+        if (isInErrorRecovery) isInErrorRecovery = false;
+
+        return new DestructorDeclarationNode(
+            attributes,
+            modifiers,
+            tilde,
+            identifier,
+            openParen,
+            closeParen,
+            blockOrSemicolon);
     }
 
     private SeparatedSyntaxList<ArgumentNode> ParseArgumentList()
