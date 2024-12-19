@@ -705,13 +705,30 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var enumKeyword = Expect(TokenKind.Enum, "enum");
         var identifier = ExpectIdentifier();
+        var baseType = ParseEnumBaseType();
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var members = ParseEnumMemberDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
         var semicolon = ExpectOptional(TokenKind.Semicolon);
 
-        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, openBrace, members, closeBrace,
+        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, baseType, openBrace, members, closeBrace,
             semicolon);
+    }
+    
+    private OptionalSyntax<BaseTypeListNode> ParseEnumBaseType()
+    {
+        if (Current.Kind != TokenKind.Colon)
+            return OptionalSyntax<BaseTypeListNode>.None;
+        
+        var colon = Expect(TokenKind.Colon);
+        var types = ImmutableArray.CreateBuilder<TypeSyntax>();
+        
+        types.Add(ParseExpectedType());
+        var baseTypes = new SeparatedSyntaxList<TypeSyntax>(
+            types.ToImmutable(),
+            ImmutableArray<SyntaxToken>.Empty);
+
+        return OptionalSyntax.With(new BaseTypeListNode(colon, baseTypes));
     }
 
     private ImmutableArray<EnumMemberDeclarationNode> ParseEnumMemberDeclarations()

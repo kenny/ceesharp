@@ -8,6 +8,7 @@ public sealed record EnumDeclarationNode(
     ImmutableArray<SyntaxToken> Modifiers,
     SyntaxToken EnumKeyword,
     SyntaxToken Identifier,
+    OptionalSyntax<BaseTypeListNode> BaseType,
     SyntaxToken OpenBrace,
     ImmutableArray<EnumMemberDeclarationNode> Members,
     SyntaxToken CloseBrace,
