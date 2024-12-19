@@ -799,7 +799,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var types = ImmutableArray.CreateBuilder<TypeSyntax>();
         var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
 
-        types.Add(ParseQualifiedTypeExact());
+        types.Add(ParseExpectedType());
 
         while (Current.Kind == TokenKind.Comma)
         {
@@ -809,7 +809,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             if (isInErrorRecovery)
                 Synchronize();
 
-            types.Add(ParseQualifiedTypeExact());
+            types.Add(ParseExpectedType());
         }
 
         var baseTypes = new SeparatedSyntaxList<TypeSyntax>(
