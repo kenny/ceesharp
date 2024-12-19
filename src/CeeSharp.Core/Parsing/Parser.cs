@@ -579,6 +579,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Implicit or TokenKind.Explicit:
                 return ParseConversionOperatorDeclaration(attributes, modifiers);
 
+            case TokenKind.Const:
+                return ParseConstantFieldDeclaration(attributes, modifiers);
+            
             case TokenKind.Event:
                 return ParseEventDeclaration(attributes, modifiers);
 
@@ -1144,6 +1147,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new EventFieldDeclarationNode(attributes, modifiers, eventKeyword, type, variableDeclarators, semicolon);
     }
+    
+
+    private FieldDeclarationNode ParseConstantFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes, ImmutableArray<SyntaxToken> modifiers)
+    {
+        using var _ = PushContext(ParserContext.Constant);
+        ValidateModifiers<FieldDeclarationNode>(modifiers);
+
+        var constKeyword = OptionalSyntax.With(Expect(TokenKind.Const, "const"));
+        var type = ParseExpectedType();
+        var variableDeclarators = ParseVariableDeclarators();
+        var semicolon = Expect(TokenKind.Semicolon);
+
+        return new FieldDeclarationNode(
+            attributes,
+            modifiers,
+            constKeyword,
+            type,
+            variableDeclarators,
+            semicolon);
+    }
 
     private FieldDeclarationNode ParseFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers,
@@ -1158,6 +1181,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new FieldDeclarationNode(
             attributes,
             modifiers,
+            OptionalSyntax<SyntaxToken>.None,
             type,
             variableDeclarators,
             semicolon);
