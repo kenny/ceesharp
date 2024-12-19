@@ -427,7 +427,7 @@ public static class TokenKindExtensions
         };
     }
 
-    public static bool IsValidInProperty(this TokenKind tokenKind)
+    public static bool IsValidInPropertyOrIndexer(this TokenKind tokenKind)
     {
         return tokenKind switch
         {
@@ -440,6 +440,19 @@ public static class TokenKindExtensions
         };
     }
 
+    public static bool IsValidInEvent(this TokenKind tokenKind)
+    {
+        return tokenKind switch
+        {
+            TokenKind.Add
+                or TokenKind.Remove
+                or TokenKind.OpenBrace
+                or TokenKind.CloseBrace
+                or TokenKind.OpenBracket => true,
+            _ => tokenKind.IsModifier()
+        };
+    }
+    
     public static bool IsValidInStatement(this TokenKind tokenKind)
     {
         return tokenKind switch

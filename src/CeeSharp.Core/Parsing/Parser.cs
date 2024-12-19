@@ -1240,7 +1240,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             var isValidForContext = keywordKind switch
             {
-                TokenKind.Get or TokenKind.Set => currentContext == ParserContext.Property,
+                TokenKind.Get or TokenKind.Set => currentContext is ParserContext.Property or ParserContext.Indexer,
                 TokenKind.Add or TokenKind.Remove => currentContext == ParserContext.Event,
                 _ => false
             };
@@ -1285,6 +1285,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         ImmutableArray<SyntaxToken> modifiers,
         TypeSyntax type, OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
+        using var _ = PushContext(ParserContext.Indexer);
+        
         ValidateModifiers<IndexerDeclarationNode>(modifiers);
 
         var thisKeyword = Expect(TokenKind.This, "this");
@@ -1629,7 +1631,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             ParserContext.Statement => tokenKind.IsValidInStatement(),
             ParserContext.AttributeList => tokenKind.IsValidInAttributeList(),
             ParserContext.EnumMember => tokenKind.IsValidInEnumMember(),
-            ParserContext.Property => tokenKind.IsValidInProperty(),
+            ParserContext.Property or ParserContext.Indexer => tokenKind.IsValidInPropertyOrIndexer(),
+            ParserContext.Event => tokenKind.IsValidInEvent(),
             _ => false
         };
     }
