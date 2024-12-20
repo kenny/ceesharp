@@ -17,4 +17,22 @@ public sealed class Diagnostics
     {
         diagnostics.Add(new Diagnostic(DiagnosticSeverity.Error, position, message));
     }
+
+    public Suppression Suppress()
+    {
+        return new Suppression(this, diagnostics.Count);
+    }
+
+    private void RestoreTo(int suppressionStart)
+    {
+        diagnostics.RemoveRange(suppressionStart, diagnostics.Count - suppressionStart);
+    }
+
+    public readonly struct Suppression(Diagnostics diagnostics, int suppressionStart)
+    {
+        public void Restore()
+        {
+            diagnostics.RestoreTo(suppressionStart);
+        }
+    }
 }

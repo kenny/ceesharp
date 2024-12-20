@@ -1511,20 +1511,24 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             case TokenKind.Semicolon:
                 return new EmptyStatementNode(Expect(TokenKind.Semicolon, ";"));
-            
+
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
                 var constKeyword = ExpectOptional(TokenKind.Const);
-                
+
                 var restorePoint = tokenStream.CreateRestorePoint();
+                var suppress = diagnostics.Suppress();
 
                 var type = ParseType();
 
                 if (constKeyword.HasValue || (type != null && Current.Kind == TokenKind.Identifier))
                     return ParseDeclarationStatement(constKeyword, type);
-
+                
                 tokenStream.Restore(restorePoint);
+                suppress.Restore();
+
+
                 goto default;
             default:
                 return ParseExpressionStatement();
@@ -1634,6 +1638,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openParen = Expect(TokenKind.OpenParen, "(");
 
         var restorePoint = tokenStream.CreateRestorePoint();
+        var suppress = diagnostics.Suppress();   
         
         var type = ParseType();
 
@@ -1645,6 +1650,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         else
         {
             tokenStream.Restore(restorePoint);
+            suppress.Restore();
             
             declaration = ParseExpression();
         }
@@ -1900,6 +1906,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
 
         var restorePoint = tokenStream.CreateRestorePoint();
+        var suppress = diagnostics.Suppress();   
 
         var type = ParseType();
 
@@ -1907,6 +1914,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             return new VariableDeclarationNode(OptionalSyntax<SyntaxToken>.None, type, ParseVariableDeclarators());
 
         tokenStream.Restore(restorePoint);
+        suppress.Restore();
 
         return ParseStatementExpressionList();
     }
@@ -2107,27 +2115,105 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParseUnaryExpression()
     {
-        if (Current.Kind.IsUnaryOperator())
-        {
-            var operatorToken = Expect(Current.Kind);
-            var operand = ParseUnaryExpression();
-            return new PrefixUnaryExpressionNode(operatorToken, operand);
-        }
+        if (!Current.Kind.IsUnaryOperator())
+            return ParsePrimaryExpression();
+        
+        var operatorToken = Expect(Current.Kind);
+        var operand = ParseUnaryExpression();
+        
+        return new PrefixUnaryExpressionNode(operatorToken, operand);
 
-        var expression = ParsePrimaryExpression();
-
-        while (Current.Kind is TokenKind.PlusPlus or TokenKind.MinusMinus)
-        {
-            var operatorToken = Expect(Current.Kind);
-            expression = new PostfixUnaryExpressionNode(expression, operatorToken);
-        }
-
-        return expression;
     }
 
     private ExpressionNode ParsePrimaryExpression()
     {
-        return new IdentifierExpressionNode(ExpectIdentifier());
+        ExpressionNode? expression = Current.Kind switch
+        {
+            TokenKind.False or TokenKind.True => new LiteralExpressionNode(Expect(Current.Kind)),
+            TokenKind.Null => new LiteralExpressionNode(Expect(TokenKind.Null)),
+            TokenKind.NumericLiteral
+                or TokenKind.StringLiteral
+                or TokenKind.CharacterLiteral => new LiteralExpressionNode(Expect(Current.Kind)),
+            TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
+            TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
+            TokenKind.OpenParen => ParseParenthesizedExpression(),
+            TokenKind.Identifier => new IdentifierExpressionNode(ExpectIdentifier()),
+            _ => null
+        };
+
+        if (expression == null)
+        {
+            var current = Current;
+            diagnostics.ReportError(Current.Position, "Expected expression");
+            isInErrorRecovery = true;
+            tokenStream.Advance();
+            expression = new ErrorExpressionNode(current);
+        }
+
+        while (true)
+            switch (Current.Kind)
+            {
+                case TokenKind.OpenParen:
+                    expression = ParseInvocationExpression(expression);
+                    break;
+                case TokenKind.OpenBracket:
+                    expression = ParseElementAccessExpression(expression);
+                    break;
+                case TokenKind.Dot:
+                    expression = ParseMemberAccessExpression(expression);
+                    break;
+
+                case TokenKind.MinusMinus:
+                case TokenKind.PlusPlus:
+                    var operatorToken = Expect(Current.Kind);
+                    expression = new PostfixUnaryExpressionNode(expression, operatorToken);
+                    break;
+
+                default:
+                    return expression;
+            }
+    }
+
+    private InvocationExpressionNode ParseInvocationExpression(ExpressionNode expression)
+    {
+        var openParen = Expect(TokenKind.OpenParen);
+        var arguments = ParseArgumentList();
+        var closeParen = Expect(TokenKind.CloseParen);
+
+        return new InvocationExpressionNode(
+            expression,
+            openParen,
+            arguments,
+            closeParen);
+    }
+
+    private MemberAccessExpressionNode ParseMemberAccessExpression(ExpressionNode expression)
+    {
+        var dot = Expect(TokenKind.Dot);
+        var name = ExpectIdentifier();
+
+        return new MemberAccessExpressionNode(expression, dot, name);
+    }
+
+    private ElementAccessExpressionNode ParseElementAccessExpression(ExpressionNode expression)
+    {
+        var openBracket = Expect(TokenKind.OpenBracket);
+        var arguments = ParseArgumentList();
+        var closeBracket = Expect(TokenKind.CloseBracket, "]");
+        return new ElementAccessExpressionNode(
+            expression,
+            openBracket,
+            arguments,
+            closeBracket);
+    }
+
+    private ParenthesizedExpressionNode ParseParenthesizedExpression()
+    {
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return new ParenthesizedExpressionNode(openParen, expression, closeParen);
     }
 
     private ParserContextScope PushContext(ParserContext parserContext)
