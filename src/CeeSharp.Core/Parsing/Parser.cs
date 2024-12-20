@@ -1489,7 +1489,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseCheckedStatement();
             case TokenKind.Unchecked:
                 return ParseUncheckedStatement();
-
+            case TokenKind.Lock:
+                return ParseLockStatement();
 
             case TokenKind.Const:
             case TokenKind.Identifier:
@@ -1580,6 +1581,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var block = ParseBlockStatement();
 
         return new UncheckedStatementNode(uncheckedKeyword, block);
+    }
+
+    private LockStatementNode ParseLockStatement()
+    {
+        var lockKeyword = Expect(TokenKind.Lock, "lock");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement();
+
+        return new LockStatementNode(lockKeyword, openParen, expression, closeParen, statement);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
