@@ -1504,6 +1504,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseUncheckedStatement();
             case TokenKind.Lock:
                 return ParseLockStatement();
+            case TokenKind.Using:
+                return ParseUsingStatement();
 
             case TokenKind.Const:
             case TokenKind.Identifier:
@@ -1619,6 +1621,38 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var statement = ParseStatement();
 
         return new LockStatementNode(lockKeyword, openParen, expression, closeParen, statement);
+    }
+
+    private UsingStatementNode ParseUsingStatement()
+    {
+        var usingKeyword = Expect(TokenKind.Using);
+        var openParen = Expect(TokenKind.OpenParen, "(");
+
+        var restorePoint = tokenStream.CreateRestorePoint();
+        
+        var type = ParseType();
+
+        SyntaxUnion<VariableDeclarationNode, ExpressionNode> declaration;
+
+        if (type != null && Current.Kind == TokenKind.Identifier)
+            declaration =
+                new VariableDeclarationNode(OptionalSyntax<SyntaxToken>.None, type, ParseVariableDeclarators());
+        else
+        {
+            tokenStream.Restore(restorePoint);
+            
+            declaration = ParseExpression();
+        }
+
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement();
+
+        return new UsingStatementNode(
+            usingKeyword,
+            openParen,
+            declaration,
+            closeParen,
+            statement);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
