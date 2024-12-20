@@ -1485,6 +1485,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseReturnStatement();
             case TokenKind.Throw:
                 return ParseThrowStatement();
+            case TokenKind.Checked:
+                return ParseCheckedStatement();
+            case TokenKind.Unchecked:
+                return ParseUncheckedStatement();
 
 
             case TokenKind.Const:
@@ -1549,7 +1553,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ReturnStatementNode(returnKeyword, expression, semicolon);
     }
 
-    private StatementNode ParseThrowStatement()
+    private ThrowStatementNode ParseThrowStatement()
     {
         var throwKeyword = Expect(TokenKind.Throw, "throw");
         var expression = Current.Kind switch
@@ -1560,6 +1564,22 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
         return new ThrowStatementNode(throwKeyword, expression, semicolon);
+    }
+
+    private CheckedStatementNode ParseCheckedStatement()
+    {
+        var checkedKeyword = Expect(TokenKind.Checked, "checked");
+        var block = ParseBlockStatement();
+
+        return new CheckedStatementNode(checkedKeyword, block);
+    }
+
+    private UncheckedStatementNode ParseUncheckedStatement()
+    {
+        var uncheckedKeyword = Expect(TokenKind.Unchecked, "unchecked");
+        var block = ParseBlockStatement();
+
+        return new UncheckedStatementNode(uncheckedKeyword, block);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
