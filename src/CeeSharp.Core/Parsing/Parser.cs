@@ -1467,6 +1467,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseBlockStatement();
             case TokenKind.If:
                 return ParseIfStatement();
+            case TokenKind.Switch:
+                return ParseSwitchStatement();
             case TokenKind.For:
                 return ParseForStatement();
             case TokenKind.Foreach:
@@ -1479,6 +1481,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseBreakStatement();
             case TokenKind.Continue:
                 return ParseContinueStatement();
+            case TokenKind.Goto when Lookahead.Kind == TokenKind.Default:
+                return ParseGotoDefaultStatement();
+            case TokenKind.Goto when Lookahead.Kind == TokenKind.Case:
+                return ParseGotoCaseStatement();
             case TokenKind.Goto:
                 return ParseGotoStatement();
             case TokenKind.Return:
@@ -1539,6 +1545,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
         return new GotoStatementNode(gotoKeyword, identifier, semicolon);
+    }
+
+    private GotoDefaultStatementNode ParseGotoDefaultStatement()
+    {
+        var gotoKeyword = Expect(TokenKind.Goto, "goto");
+        var defaultKeyword = Expect(TokenKind.Default, "default");
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new GotoDefaultStatementNode(gotoKeyword, defaultKeyword, semicolon);
+    }
+
+    private GotoCaseStatementNode ParseGotoCaseStatement()
+    {
+        var gotoKeyword = Expect(TokenKind.Goto, "goto");
+        var caseKeyword = Expect(TokenKind.Case, "case");
+        var expression = ParseExpression();
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new GotoCaseStatementNode(gotoKeyword, caseKeyword, expression, semicolon);
     }
 
     private ReturnStatementNode ParseReturnStatement()
@@ -1652,6 +1677,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ExpressionStatementNode(expression, semicolon);
     }
 
+    private OptionalSyntax<ElseClauseNode> ParseElseClause()
+    {
+        if (Current.Kind != TokenKind.Else)
+            return OptionalSyntax<ElseClauseNode>.None;
+
+        var elseKeyword = Expect(TokenKind.Else, "else");
+        var statement = ParseStatement();
+
+        return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
+    }
+
     private IfStatementNode ParseIfStatement()
     {
         var ifKeyword = Expect(TokenKind.If, "if");
@@ -1664,15 +1700,65 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new IfStatementNode(ifKeyword, openParen, condition, closeParen, statement, elseClause);
     }
 
-    private OptionalSyntax<ElseClauseNode> ParseElseClause()
+    private SwitchStatementNode ParseSwitchStatement()
     {
-        if (Current.Kind != TokenKind.Else)
-            return OptionalSyntax<ElseClauseNode>.None;
+        var switchKeyword = Expect(TokenKind.Switch);
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var openBrace = Expect(TokenKind.OpenBrace, "{");
 
-        var elseKeyword = Expect(TokenKind.Else, "else");
-        var statement = ParseStatement();
+        var sections = ImmutableArray.CreateBuilder<SwitchSectionNode>();
 
-        return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
+        while (Current.Kind is TokenKind.Case or TokenKind.Default) sections.Add(ParseSwitchSection());
+
+        var closeBrace = Expect(TokenKind.CloseBrace, "}");
+
+        return new SwitchStatementNode(
+            switchKeyword,
+            openParen,
+            expression,
+            closeParen,
+            openBrace,
+            sections.ToImmutable(),
+            closeBrace);
+    }
+
+    private SwitchSectionNode ParseSwitchSection()
+    {
+        var labels = ImmutableArray.CreateBuilder<SwitchLabelNode>();
+        var statements = ImmutableArray.CreateBuilder<StatementNode>();
+
+        do
+        {
+            labels.Add(ParseSwitchLabel());
+        } while (Current.Kind is TokenKind.Case or TokenKind.Default);
+
+        while (Current.Kind is not (TokenKind.Case or TokenKind.Default or TokenKind.CloseBrace))
+        {
+            var statement = ParseStatement();
+            statements.Add(statement);
+
+            if (isInErrorRecovery)
+                Synchronize();
+        }
+
+        return new SwitchSectionNode(labels.ToImmutable(), statements.ToImmutable());
+    }
+
+    private SwitchLabelNode ParseSwitchLabel()
+    {
+        var caseOrDefault = Expect(Current.Kind);
+
+        var expression = caseOrDefault.Kind switch
+        {
+            TokenKind.Case => OptionalSyntax.With(ParseExpression()),
+            _ => OptionalSyntax<ExpressionNode>.None
+        };
+
+        var colon = Expect(TokenKind.Colon, ":");
+
+        return new SwitchLabelNode(caseOrDefault, expression, colon);
     }
 
     private ForStatementNode ParseForStatement()
