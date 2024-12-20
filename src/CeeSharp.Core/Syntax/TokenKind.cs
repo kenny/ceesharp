@@ -271,6 +271,17 @@ public static class TokenKindExtensions
         };
     }
 
+    public static bool IsShiftOperator(this TokenKind tokenKind)
+    {
+        return tokenKind switch
+        {
+            TokenKind.LeftShift
+                or TokenKind.RightShift => true,
+            _ => false
+        };
+    }
+
+
     public static bool IsAdditiveOperator(this TokenKind tokenKind)
     {
         return tokenKind switch

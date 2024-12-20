@@ -1439,7 +1439,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return left;
     }
-    
+
     private MemberNameNode ParseMemberName()
     {
         MemberNameNode left = ParseSimpleName();
@@ -2055,7 +2055,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParseConditionalExpression()
     {
-        var condition = ParseLogicalOrExpression();
+        var condition = ParseConditionalOrExpression();
 
         if (Current.Kind != TokenKind.Question)
             return condition;
@@ -2068,14 +2068,43 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ConditionalExpressionNode(condition, questionToken, ifTrue, colonToken, ifFalse);
     }
 
-    private ExpressionNode ParseLogicalOrExpression()
+    private ExpressionNode ParseConditionalOrExpression()
     {
-        var left = ParseLogicalAndExpression();
+        var left = ParseConditionalAndExpression();
 
         while (Current.Kind == TokenKind.OrOr)
         {
             var operatorToken = Expect(TokenKind.OrOr);
+            var right = ParseConditionalAndExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseConditionalAndExpression()
+    {
+        var left = ParseLogicalOrExpression();
+
+        while (Current.Kind == TokenKind.AndAnd)
+        {
+            var operatorToken = Expect(TokenKind.AndAnd);
+            var right = ParseLogicalOrExpression();
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseLogicalOrExpression()
+    {
+        var left = ParseLogicalAndExpression();
+
+        while (Current.Kind == TokenKind.Pipe)
+        {
+            var operatorToken = Expect(Current.Kind);
             var right = ParseLogicalAndExpression();
+
             left = new BinaryExpressionNode(left, operatorToken, right);
         }
 
@@ -2084,12 +2113,28 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParseLogicalAndExpression()
     {
+        var left = ParseLogicalXorExpression();
+
+        while (Current.Kind == TokenKind.Ampersand)
+        {
+            var operatorToken = Expect(Current.Kind);
+            var right = ParseLogicalXorExpression();
+
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseLogicalXorExpression()
+    {
         var left = ParseEqualityExpression();
 
-        while (Current.Kind == TokenKind.AndAnd)
+        while (Current.Kind == TokenKind.Xor)
         {
-            var operatorToken = Expect(TokenKind.AndAnd);
+            var operatorToken = Expect(Current.Kind);
             var right = ParseEqualityExpression();
+
             left = new BinaryExpressionNode(left, operatorToken, right);
         }
 
@@ -2112,7 +2157,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParseRelationalExpression()
     {
-        var left = ParseAdditiveExpression();
+        var left = ParseShiftExpression();
 
         while (true)
             switch (Current.Kind)
@@ -2134,10 +2179,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                         return left;
 
                     var operatorToken = Expect(Current.Kind);
-                    var right = ParseAdditiveExpression();
+                    var right = ParseShiftExpression();
                     left = new BinaryExpressionNode(left, operatorToken, right);
                     break;
             }
+    }
+
+    private ExpressionNode ParseShiftExpression()
+    {
+        var left = ParseAdditiveExpression();
+
+        while (Current.Kind.IsShiftOperator())
+        {
+            var operatorToken = Expect(Current.Kind);
+            var right = ParseAdditiveExpression();
+
+            left = new BinaryExpressionNode(left, operatorToken, right);
+        }
+
+        return left;
     }
 
     private ExpressionNode ParseAdditiveExpression()
