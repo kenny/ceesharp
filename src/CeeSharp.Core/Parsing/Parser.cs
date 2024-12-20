@@ -1454,18 +1454,15 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         using var _ = PushContext(ParserContext.Statement);
 
-        return Current.Kind switch
-        {
-            TokenKind.OpenBrace => ParseBlockStatement(),
-            TokenKind.If => ParseIfStatement(),
-            _ => ParseExpressionOrDeclarationStatement()
-        };
-    }
-
-    private StatementNode ParseExpressionOrDeclarationStatement()
-    {
+        if (Current.Kind == TokenKind.Identifier && Lookahead.Kind == TokenKind.Colon)
+            return ParseLabeledStatement();
+        
         switch (Current.Kind)
         {
+            case TokenKind.OpenBrace:
+                return ParseBlockStatement();
+            case TokenKind.If:
+                return ParseIfStatement();  
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
@@ -1484,10 +1481,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     return ParseDeclarationStatement(constKeyword, type);
                 
                 tokenStream.Restore(restorePoint);
-                break;
+                goto default;
+            default:
+                return ParseExpressionStatement();
         }
-        
-        return ParseExpressionStatement();
+    }
+
+    private LabeledStatementNode ParseLabeledStatement()
+    {
+        var identifier = ExpectIdentifier();
+        var colon = Expect(TokenKind.Colon, ":");
+        var statement = ParseStatement();
+
+        return new LabeledStatementNode(identifier, colon, statement);
     }
 
     private DeclarationStatementNode ParseDeclarationStatement(OptionalSyntax<SyntaxToken> constKeyword, TypeSyntax? type)
