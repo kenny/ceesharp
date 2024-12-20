@@ -11,7 +11,8 @@ public sealed record StructDeclarationNode(
     OptionalSyntax<BaseTypeListNode> BaseTypes,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
-    SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
+    SyntaxToken CloseBrace,
+    OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IModifierValidator
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {

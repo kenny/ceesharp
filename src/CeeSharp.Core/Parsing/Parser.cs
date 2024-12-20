@@ -499,8 +499,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var usings = ParseUsings();
         var declarations = ParseNamespaceOrTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        var semicolon = ExpectOptional(TokenKind.Semicolon);
 
-        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace);
+        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace, semicolon);
     }
 
     private ImmutableArray<SyntaxToken> ParseModifiers()
@@ -813,10 +814,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        var semicolon = ExpectOptional(TokenKind.Semicolon);
 
         return new ClassDeclarationNode(attributes, modifiers, classKeyword, identifier, baseTypes, openBrace,
             declarations,
-            closeBrace);
+            closeBrace,
+            semicolon);
     }
 
     private OptionalSyntax<BaseTypeListNode> ParseBaseTypeList()
@@ -859,10 +862,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        var semicolon = ExpectOptional(TokenKind.Semicolon);
 
         return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, baseTypes, openBrace,
             declarations,
-            closeBrace);
+            closeBrace,
+            semicolon);
     }
 
     private InterfaceDeclarationNode ParseInterfaceDeclaration(ImmutableArray<AttributeSectionNode> attributes,
@@ -876,6 +881,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openBrace = Expect(TokenKind.OpenBrace, "{");
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
+        var semicolon = ExpectOptional(TokenKind.Semicolon);
 
         return new InterfaceDeclarationNode(
             attributes,
@@ -885,7 +891,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             baseTypes,
             openBrace,
             declarations,
-            closeBrace);
+            closeBrace,
+            semicolon);
     }
 
     private ConversionOperatorDeclarationNode ParseConversionOperatorDeclaration(
@@ -1501,13 +1508,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
-                var constKeyword = Current.Kind switch
-                {
-                    TokenKind.Const =>
-                        OptionalSyntax.With(Expect(Current.Kind)),
-                    _ => OptionalSyntax<SyntaxToken>.None
-                };
-
+                var constKeyword = ExpectOptional(TokenKind.Const);
+                
                 var restorePoint = tokenStream.CreateRestorePoint();
 
                 var type = ParseType();

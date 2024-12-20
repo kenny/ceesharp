@@ -9,7 +9,8 @@ public sealed record NamespaceDeclarationNode(
     SyntaxToken OpenBrace,
     ImmutableArray<UsingDirectiveNode> Usings,
     ImmutableArray<DeclarationNode> Declarations,
-    SyntaxToken CloseBrace) : DeclarationNode
+    SyntaxToken CloseBrace,
+    OptionalSyntax<SyntaxToken> Semicolon) : DeclarationNode
 {
     public override IEnumerable<SyntaxNode> GetChildren()
     {

@@ -1,8 +1,7 @@
 using System.Collections.Immutable;
 using CeeSharp.Core.Parsing;
-using CeeSharp.Core.Syntax;
-using CeeSharp.Core.Syntax.Nodes;
-using CeeSharp.Core.Syntax.Nodes.Declarations;
+
+namespace CeeSharp.Core.Syntax.Nodes.Declarations;
 
 public sealed record InterfaceDeclarationNode(
     ImmutableArray<AttributeSectionNode> Attributes,
@@ -12,7 +11,8 @@ public sealed record InterfaceDeclarationNode(
     OptionalSyntax<BaseTypeListNode> BaseTypes,
     SyntaxToken OpenBrace,
     ImmutableArray<DeclarationNode> Declarations,
-    SyntaxToken CloseBrace) : TypeDeclarationNode, IModifierValidator
+    SyntaxToken CloseBrace,
+    OptionalSyntax<SyntaxToken> Semicolon) : TypeDeclarationNode, IModifierValidator
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
