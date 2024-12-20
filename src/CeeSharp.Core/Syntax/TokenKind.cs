@@ -69,7 +69,7 @@ public enum TokenKind
     Sealed,
     Set,
     Short,
-    Sizeof,
+    SizeOf,
     StackAlloc,
     Static,
     String,
@@ -361,7 +361,7 @@ public static class TokenKindExtensions
                 or TokenKind.New
                 or TokenKind.TypeOf
                 or TokenKind.Default
-                or TokenKind.Sizeof
+                or TokenKind.SizeOf
                 or TokenKind.StackAlloc
                 or TokenKind.Identifier => true,
             _ => false

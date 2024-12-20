@@ -2165,6 +2165,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
             TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
             TokenKind.New => ParseNewExpression(),
+            TokenKind.SizeOf => ParseSizeOfExpression(),
             TokenKind.TypeOf => ParseTypeOfExpression(),
             TokenKind.Checked => ParseCheckedExpression(),
             TokenKind.Unchecked => ParseUncheckedExpression(),
@@ -2212,6 +2213,25 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private ExpressionNode ParseNewExpression()
     {
         var newKeyword = Expect(TokenKind.New);
+
+        if (Current.Kind == TokenKind.StackAlloc)
+        {
+            var stackallocKeyword = Expect(TokenKind.StackAlloc);
+            var elementType = ParseNonArrayType();
+
+            var openBracket = Expect(TokenKind.OpenBracket);
+            var size = ParseExpression();
+            var closeBracket = Expect(TokenKind.CloseBracket);
+
+            return new StackAllocExpressionNode(
+                newKeyword,
+                stackallocKeyword,
+                elementType!,
+                openBracket,
+                size,
+                closeBracket);
+        }
+
         var type = ParseNonArrayType();
 
         if (type != null)
@@ -2412,14 +2432,24 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ParenthesizedExpressionNode(openParen, expression, closeParen);
     }
 
+    private SizeOfExpressionNode ParseSizeOfExpression()
+    {
+        var sizeOfKeyword = Expect(TokenKind.SizeOf, "sizeof");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var type = ParseExpectedType();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return new SizeOfExpressionNode(sizeOfKeyword, openParen, type, closeParen);
+    }
+
     private TypeOfExpressionNode ParseTypeOfExpression()
     {
         var typeOfKeyword = Expect(TokenKind.TypeOf, "typeof");
         var openParen = Expect(TokenKind.OpenParen, "(");
-        var expression = ParseExpression();
+        var type = ParseExpectedType();
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
-        return new TypeOfExpressionNode(typeOfKeyword, openParen, expression, closeParen);
+        return new TypeOfExpressionNode(typeOfKeyword, openParen, type, closeParen);
     }
 
     private CheckedExpressionNode ParseCheckedExpression()

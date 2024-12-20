@@ -673,7 +673,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 "sbyte" => TokenKind.Sbyte,
                 "sealed" => TokenKind.Sealed,
                 "short" => TokenKind.Short,
-                "sizeof" => TokenKind.Sizeof,
+                "sizeof" => TokenKind.SizeOf,
                 "stackalloc" => TokenKind.StackAlloc,
                 "static" => TokenKind.Static,
                 "string" => TokenKind.String,
