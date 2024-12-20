@@ -1471,6 +1471,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseForStatement();
             case TokenKind.Foreach:
                 return ParseForeachStatement();
+            case TokenKind.While:
+                return ParseWhileStatement();
+            case TokenKind.Do:
+                return ParseDoStatement();
+            
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
@@ -1655,6 +1660,30 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new ForeachStatementNode(foreachKeyword, openParen, type, identifier, inKeyword, expression, closeParen,
             statement);
+    }
+    
+    private WhileStatementNode ParseWhileStatement()
+    {
+        var whileKeyword = Expect(TokenKind.While, "while");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var condition = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement();
+
+        return new WhileStatementNode(whileKeyword, openParen, condition, closeParen, statement);
+    }
+    
+    private DoStatementNode ParseDoStatement()
+    {
+        var doKeyword = Expect(TokenKind.Do, "do");
+        var statement = ParseStatement();
+        var whileKeyword = Expect(TokenKind.While, "while");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var condition = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new DoStatementNode(doKeyword, statement, whileKeyword, openParen, condition, closeParen, semicolon);
     }
 
     private ExpressionNode ParseExpression()
