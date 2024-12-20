@@ -80,7 +80,7 @@ public enum TokenKind
     True,
     Try,
     Type,
-    Typeof,
+    TypeOf,
     Uint,
     Ulong,
     Unchecked,
@@ -189,6 +189,20 @@ public static class TokenKindExtensions
             TokenKind.Ref
                 or TokenKind.Out
                 or TokenKind.Params => true,
+            _ => false
+        };
+    }
+
+    public static bool IsLiteral(this TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.True
+                or TokenKind.False
+                or TokenKind.Null
+                or TokenKind.NumericLiteral
+                or TokenKind.CharacterLiteral
+                or TokenKind.StringLiteral => true,
             _ => false
         };
     }
@@ -345,7 +359,7 @@ public static class TokenKindExtensions
                 or TokenKind.This
                 or TokenKind.Base
                 or TokenKind.New
-                or TokenKind.Typeof
+                or TokenKind.TypeOf
                 or TokenKind.Default
                 or TokenKind.Sizeof
                 or TokenKind.StackAlloc
@@ -452,7 +466,7 @@ public static class TokenKindExtensions
             _ => tokenKind.IsModifier()
         };
     }
-    
+
     public static bool IsValidInStatement(this TokenKind tokenKind)
     {
         return tokenKind switch

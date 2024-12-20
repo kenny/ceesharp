@@ -171,15 +171,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         if (type == null)
             return null;
 
-        while (Current.Kind == TokenKind.OpenBracket)
+        if (Current.Kind != TokenKind.OpenBracket)
+            return type;
+
+        var rankSpecifiers = ImmutableArray.CreateBuilder<ArrayRankSpecifierNode>();
+
+        do
         {
-            var openBracket = Expect(TokenKind.OpenBracket, "[");
-            var closeBracket = Expect(TokenKind.CloseBracket, "]");
+            var rankSpecifier = ParseArrayRankSpecifier();
 
-            type = new ArrayTypeSyntax(type, openBracket, closeBracket);
-        }
+            rankSpecifiers.Add(rankSpecifier);
+        } while (Current.Kind == TokenKind.OpenBracket);
 
-        return type;
+        return new ArrayTypeSyntax(type, rankSpecifiers.ToImmutable());
     }
 
     private TypeSyntax? ParseNonArrayType()
@@ -965,7 +969,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         ImmutableArray<SyntaxToken> modifiers, TypeSyntax returnType,
         OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
+        using var _ = PushContext(ParserContext.Statement);
         ValidateModifiers<MethodDeclarationNode>(modifiers);
+
 
         var identifier = ExpectIdentifier();
         var openParen = Expect(TokenKind.OpenParen, "(");
@@ -978,7 +984,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             _ => Expect(TokenKind.Semicolon, ";")
         };
 
-        if (isInErrorRecovery) isInErrorRecovery = false;
 
         return new MethodDeclarationNode(
             attributes,
@@ -1212,6 +1217,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             declarators.Add(ParseVariableDeclarator());
             separators.Add(comma);
+
+            if (isInErrorRecovery && IsTokenValidInPrecedingContext(Current.Kind))
+            {
+                isInErrorRecovery = false;
+                break;
+            }
+
+            if (isInErrorRecovery) Synchronize();
         }
 
         return new SeparatedSyntaxList<VariableDeclaratorNode>(declarators.ToImmutable(), separators.ToImmutable());
@@ -2120,7 +2133,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         if (Current.Kind == TokenKind.OpenParen && IsPossibleCastExpression())
             return ParseCastExpression();
-        
+
         if (!Current.Kind.IsUnaryOperator())
             return ParsePrimaryExpression();
 
@@ -2142,7 +2155,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParsePrimaryExpression()
     {
-        ExpressionNode? expression = Current.Kind switch
+        var expression = Current.Kind switch
         {
             TokenKind.False or TokenKind.True => new LiteralExpressionNode(Expect(Current.Kind)),
             TokenKind.Null => new LiteralExpressionNode(Expect(TokenKind.Null)),
@@ -2151,6 +2164,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 or TokenKind.CharacterLiteral => new LiteralExpressionNode(Expect(Current.Kind)),
             TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
             TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
+            TokenKind.New => ParseNewExpression(),
             TokenKind.TypeOf => ParseTypeOfExpression(),
             TokenKind.Checked => ParseCheckedExpression(),
             TokenKind.Unchecked => ParseUncheckedExpression(),
@@ -2158,6 +2172,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             TokenKind.Identifier => new IdentifierExpressionNode(ExpectIdentifier()),
             _ => null
         };
+
+        if (isInErrorRecovery)
+            return expression!;
 
         if (expression == null)
         {
@@ -2190,6 +2207,124 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 default:
                     return expression;
             }
+    }
+
+    private ExpressionNode ParseNewExpression()
+    {
+        var newKeyword = Expect(TokenKind.New);
+        var type = ParseNonArrayType();
+
+        if (type != null)
+            return Current.Kind switch
+            {
+                TokenKind.OpenBracket => ParseArrayCreationExpression(newKeyword, type),
+                TokenKind.OpenParen => ParseObjectCreationExpression(newKeyword, type),
+                _ => new ErrorExpressionNode(Current)
+            };
+
+        diagnostics.ReportError(Current.Position, "Type expected");
+
+        isInErrorRecovery = true;
+
+        return new ErrorExpressionNode(newKeyword);
+    }
+
+    private ExpressionNode ParseArrayCreationExpression(SyntaxToken newKeyword, TypeSyntax type)
+    {
+        var rankSpecifiers = ImmutableArray.CreateBuilder<ArrayRankSpecifierNode>();
+
+        rankSpecifiers.Add(ParseArrayRankSpecifier());
+
+        while (Current.Kind == TokenKind.OpenBracket)
+            rankSpecifiers.Add(ParseArrayRankSpecifier());
+
+        var initializer = Current.Kind switch
+        {
+            TokenKind.OpenBrace => OptionalSyntax.With(ParseArrayInitializer()),
+            _ => OptionalSyntax<ArrayInitializerExpressionNode>.None
+        };
+
+        return new ArrayCreationExpressionNode(
+            newKeyword,
+            type,
+            rankSpecifiers.ToImmutable(),
+            initializer);
+    }
+
+    private ArrayInitializerExpressionNode ParseArrayInitializer()
+    {
+        var openBrace = Expect(TokenKind.OpenBrace);
+
+        var expressions = ImmutableArray.CreateBuilder<ExpressionNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        if (Current.Kind != TokenKind.CloseBrace)
+            do
+            {
+                expressions.Add(Current.Kind switch
+                {
+                    TokenKind.OpenBrace => ParseArrayInitializer(),
+                    _ => ParseExpression()
+                });
+
+                if (Current.Kind == TokenKind.Comma)
+                    separators.Add(Expect(TokenKind.Comma));
+                else
+                    break;
+            } while (!isInErrorRecovery);
+
+        var closeBrace = Expect(TokenKind.CloseBrace);
+
+        return new ArrayInitializerExpressionNode(
+            openBrace,
+            new SeparatedSyntaxList<ExpressionNode>(expressions.ToImmutable(), separators.ToImmutable()),
+            closeBrace);
+    }
+
+    private ArrayRankSpecifierNode ParseArrayRankSpecifier()
+    {
+        var openBracket = Expect(TokenKind.OpenBracket);
+
+        var sizes = ImmutableArray.CreateBuilder<ExpressionNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        sizes.Add(Current.Kind switch
+        {
+            TokenKind.Comma or TokenKind.CloseBracket => new EmptyExpressionNode(),
+            _ => ParseExpression()
+        });
+
+        while (Current.Kind == TokenKind.Comma)
+        {
+            separators.Add(Expect(TokenKind.Comma));
+
+            sizes.Add(Current.Kind switch
+            {
+                TokenKind.Comma or TokenKind.CloseBracket => new EmptyExpressionNode(),
+                _ => ParseExpression()
+            });
+        }
+
+        var closeBracket = Expect(TokenKind.CloseBracket);
+
+        return new ArrayRankSpecifierNode(
+            openBracket,
+            new SeparatedSyntaxList<ExpressionNode>(sizes.ToImmutable(), separators.ToImmutable()),
+            closeBracket);
+    }
+
+    private ObjectCreationExpressionNode ParseObjectCreationExpression(SyntaxToken newKeyword, TypeSyntax type)
+    {
+        var openParen = Expect(TokenKind.OpenParen);
+        var arguments = ParseArgumentList();
+        var closeParen = Expect(TokenKind.CloseParen);
+
+        return new ObjectCreationExpressionNode(
+            newKeyword,
+            type,
+            openParen,
+            arguments,
+            closeParen);
     }
 
     private bool IsPossibleCastExpression()
@@ -2296,7 +2431,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new CheckedExpressionNode(checkedKeyword, openParen, expression, closeParen);
     }
-    
+
     private UncheckedExpressionNode ParseUncheckedExpression()
     {
         var uncheckedKeyword = Expect(TokenKind.Unchecked, "unchecked");
