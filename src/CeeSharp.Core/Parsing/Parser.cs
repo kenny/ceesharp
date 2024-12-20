@@ -2224,6 +2224,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 case TokenKind.Dot:
                     expression = ParseMemberAccessExpression(expression);
                     break;
+                case TokenKind.Arrow:
+                    expression = ParsePointerMemberAccessExpression(expression);
+                    break;
 
                 case TokenKind.MinusMinus:
                 case TokenKind.PlusPlus:
@@ -2416,6 +2419,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var name = ExpectIdentifier();
 
         return new MemberAccessExpressionNode(expression, dot, name);
+    }
+
+    private PointerMemberAccessExpressionNode ParsePointerMemberAccessExpression(ExpressionNode expression)
+    {
+        var arrow = Expect(TokenKind.Arrow);
+        var name = ExpectIdentifier();
+
+        return new PointerMemberAccessExpressionNode(expression, arrow, name);
     }
 
     private ElementAccessExpressionNode ParseElementAccessExpression(ExpressionNode expression)
