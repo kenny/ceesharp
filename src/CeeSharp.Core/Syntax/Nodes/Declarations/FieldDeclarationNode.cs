@@ -14,10 +14,12 @@ public sealed record FieldDeclarationNode(
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
-        if (parserContext != ParserContext.Constant)
-            return modifier is TokenKind.Static or TokenKind.ReadOnly or TokenKind.Volatile;
+        var isValid = false;
 
-        return modifier is TokenKind.New
+        if (parserContext != ParserContext.Constant)
+            isValid = modifier is TokenKind.Static or TokenKind.ReadOnly or TokenKind.Volatile;
+
+        return isValid || modifier is TokenKind.New
             or TokenKind.Public
             or TokenKind.Protected
             or TokenKind.Internal
