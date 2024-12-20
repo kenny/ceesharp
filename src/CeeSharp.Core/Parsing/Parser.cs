@@ -1509,6 +1509,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             case TokenKind.Try:
                 return ParseTryStatement();
 
+            case TokenKind.Semicolon:
+                return new EmptyStatementNode(Expect(TokenKind.Semicolon, ";"));
+            
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
