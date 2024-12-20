@@ -285,10 +285,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         var usingKeyword = Expect(TokenKind.Using, "using");
         var alias = ParseUsingAlias();
-        var identifier = ExpectIdentifier();
+        var name = ParseQualifiedName();
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
-        return new UsingDirectiveNode(usingKeyword, alias, identifier, semicolon);
+        return new UsingDirectiveNode(usingKeyword, alias, name, semicolon);
     }
 
     private OptionalSyntax<UsingAliasNode> ParseUsingAlias()
@@ -1424,8 +1424,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new SimpleNameNode(identifier);
     }
 
-
     private MemberNameNode ParseQualifiedName()
+    {
+        MemberNameNode left = ParseSimpleName();
+
+        while (Current.Kind == TokenKind.Dot)
+        {
+            var dot = Expect(TokenKind.Dot);
+
+            var right = ParseSimpleName();
+
+            left = new QualifiedNameNode(left, dot, right);
+        }
+
+        return left;
+    }
+    
+    private MemberNameNode ParseMemberName()
     {
         MemberNameNode left = ParseSimpleName();
 
@@ -1444,13 +1459,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return left;
     }
 
-
     private OptionalSyntax<ExplicitInterfaceNode> ParseExplicitInterface()
     {
         if (Lookahead.Kind != TokenKind.Dot)
             return OptionalSyntax<ExplicitInterfaceNode>.None;
 
-        var name = ParseQualifiedName();
+        var name = ParseMemberName();
         var dot = Expect(TokenKind.Dot, ".");
 
         return new ExplicitInterfaceNode(name, dot);
