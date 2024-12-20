@@ -22,7 +22,8 @@ public sealed record InterfaceDeclarationNode(
         return modifier is TokenKind.Public
             or TokenKind.Protected
             or TokenKind.Internal
-            or TokenKind.Private;
+            or TokenKind.Private
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()

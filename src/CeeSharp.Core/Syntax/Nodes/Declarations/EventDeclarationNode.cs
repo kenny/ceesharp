@@ -27,7 +27,8 @@ public sealed record EventDeclarationNode(
             or TokenKind.Sealed
             or TokenKind.Override
             or TokenKind.Abstract
-            or TokenKind.Extern;
+            or TokenKind.Extern
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()

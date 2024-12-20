@@ -14,7 +14,8 @@ public sealed record DestructorDeclarationNode(
 {
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
-        return modifier is TokenKind.Extern;
+        return modifier is TokenKind.Extern 
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()

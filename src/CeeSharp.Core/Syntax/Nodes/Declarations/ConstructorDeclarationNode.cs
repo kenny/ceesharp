@@ -20,7 +20,8 @@ public sealed record ConstructorDeclarationNode(
             or TokenKind.Protected
             or TokenKind.Internal
             or TokenKind.Static
-            or TokenKind.Extern;
+            or TokenKind.Extern
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()

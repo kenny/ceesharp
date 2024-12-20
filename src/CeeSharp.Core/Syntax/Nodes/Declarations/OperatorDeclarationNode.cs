@@ -19,7 +19,8 @@ public sealed record OperatorDeclarationNode(
     {
         return modifier is TokenKind.Public
             or TokenKind.Static
-            or TokenKind.Extern;
+            or TokenKind.Extern
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()

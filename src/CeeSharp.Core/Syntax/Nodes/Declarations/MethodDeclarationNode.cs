@@ -26,7 +26,8 @@ public sealed record MethodDeclarationNode(
             or TokenKind.Abstract
             or TokenKind.New
             or TokenKind.Sealed
-            or TokenKind.Extern;
+            or TokenKind.Extern
+            or TokenKind.Unsafe;
     }
 
     public override IEnumerable<SyntaxNode> GetChildren()
