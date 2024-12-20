@@ -2118,6 +2118,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
     private ExpressionNode ParseUnaryExpression()
     {
+        if (Current.Kind == TokenKind.OpenParen && IsPossibleCastExpression())
+            return ParseCastExpression();
+        
         if (!Current.Kind.IsUnaryOperator())
             return ParsePrimaryExpression();
 
@@ -2125,6 +2128,16 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var operand = ParseUnaryExpression();
 
         return new PrefixUnaryExpressionNode(operatorToken, operand);
+    }
+
+    private CastExpressionNode ParseCastExpression()
+    {
+        var openParen = Expect(TokenKind.OpenParen);
+        var type = ParseExpectedType();
+        var closeParen = Expect(TokenKind.CloseParen);
+        var expression = ParseUnaryExpression();
+
+        return new CastExpressionNode(openParen, type, closeParen, expression);
     }
 
     private ExpressionNode ParsePrimaryExpression()
@@ -2176,6 +2189,49 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 default:
                     return expression;
             }
+    }
+
+    private bool IsPossibleCastExpression()
+    {
+        var restorePoint = tokenStream.CreateRestorePoint();
+        var suppress = diagnostics.Suppress();
+
+        try
+        {
+            tokenStream.Advance();
+
+            var type = ParseType();
+
+            if (type == null)
+                return false;
+
+            if (Current.Kind != TokenKind.CloseParen)
+                return false;
+
+            tokenStream.Advance();
+
+            // If type is valid expression grammar or not
+            if (type is not (SimpleTypeSyntax or QualifiedTypeSyntax))
+                return true;
+
+            return Current.Kind switch
+            {
+                TokenKind.Tilde => true,
+                TokenKind.Exclamation => true,
+                TokenKind.OpenParen => true,
+                TokenKind.Identifier => true,
+                _ when Current.Kind.IsLiteral() => true,
+                _ when Current.Kind.IsKeyword() &&
+                       Current.Kind is not (TokenKind.As or TokenKind.Is) => true,
+
+                _ => false
+            };
+        }
+        finally
+        {
+            tokenStream.Restore(restorePoint);
+            suppress.Restore();
+        }
     }
 
     private InvocationExpressionNode ParseInvocationExpression(ExpressionNode expression)
