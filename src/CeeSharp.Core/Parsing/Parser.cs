@@ -1238,7 +1238,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var initializer = assign.HasValue switch
         {
-            true => OptionalSyntax.With(ParseExpression()),
+            true => OptionalSyntax.With(Current.Kind switch
+            {
+                TokenKind.OpenBrace => ParseArrayInitializer(),
+                _ => ParseExpression()
+            }),
             false => OptionalSyntax<ExpressionNode>.None
         };
         return new VariableDeclaratorNode(identifier, assign, initializer);
@@ -2375,6 +2379,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                     separators.Add(Expect(TokenKind.Comma));
                 else
                     break;
+
+                if (Current.Kind == TokenKind.CloseBrace)
+                    break;
+
             } while (!isInErrorRecovery);
 
         var closeBrace = Expect(TokenKind.CloseBrace);
