@@ -2151,6 +2151,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 or TokenKind.CharacterLiteral => new LiteralExpressionNode(Expect(Current.Kind)),
             TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
             TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
+            TokenKind.TypeOf => ParseTypeOfExpression(),
             TokenKind.Checked => ParseCheckedExpression(),
             TokenKind.Unchecked => ParseUncheckedExpression(),
             TokenKind.OpenParen => ParseParenthesizedExpression(),
@@ -2275,7 +2276,17 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new ParenthesizedExpressionNode(openParen, expression, closeParen);
     }
-    
+
+    private TypeOfExpressionNode ParseTypeOfExpression()
+    {
+        var typeOfKeyword = Expect(TokenKind.TypeOf, "typeof");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return new TypeOfExpressionNode(typeOfKeyword, openParen, expression, closeParen);
+    }
+
     private CheckedExpressionNode ParseCheckedExpression()
     {
         var checkedKeyword = Expect(TokenKind.Checked, "checked");

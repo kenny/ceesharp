@@ -683,7 +683,7 @@ public sealed class Lexer(Diagnostics diagnostics, SourceText sourceText)
                 "throw" => TokenKind.Throw,
                 "true" => TokenKind.True,
                 "try" => TokenKind.Try,
-                "typeof" => TokenKind.Typeof,
+                "typeof" => TokenKind.TypeOf,
                 "uint" => TokenKind.Uint,
                 "ulong" => TokenKind.Ulong,
                 "unchecked" => TokenKind.Unchecked,
