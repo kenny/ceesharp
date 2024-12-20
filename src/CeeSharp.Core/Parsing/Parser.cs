@@ -176,14 +176,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var rankSpecifiers = ImmutableArray.CreateBuilder<ArrayRankSpecifierNode>();
 
+        var isValidType = true;
+
         do
         {
             var rankSpecifier = ParseArrayRankSpecifier();
 
             rankSpecifiers.Add(rankSpecifier);
+
+            if (!isValidType)
+                continue;
+
+            foreach (var size in rankSpecifier.Sizes.Elements)
+                if (size is not EmptyExpressionNode)
+                    isValidType = false;
         } while (Current.Kind == TokenKind.OpenBracket);
 
-        return new ArrayTypeSyntax(type, rankSpecifiers.ToImmutable());
+        return new ArrayTypeSyntax(type, rankSpecifiers.ToImmutable())
+        {
+            IsValidType = isValidType
+        };
     }
 
     private TypeSyntax? ParseNonArrayType()
@@ -2457,6 +2469,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return false;
 
             tokenStream.Advance();
+
+            // The array type can look like an element access
+            if (type is ArrayTypeSyntax arrayTypeSyntax)
+                return arrayTypeSyntax.IsValidType;
 
             // If type is valid expression grammar or not
             if (type is not (SimpleTypeSyntax or QualifiedTypeSyntax))
