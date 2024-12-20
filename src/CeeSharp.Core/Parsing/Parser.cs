@@ -1506,6 +1506,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseLockStatement();
             case TokenKind.Using:
                 return ParseUsingStatement();
+            case TokenKind.Try:
+                return ParseTryStatement();
 
             case TokenKind.Const:
             case TokenKind.Identifier:
@@ -1653,6 +1655,71 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             declaration,
             closeParen,
             statement);
+    }
+
+    private TryStatementNode ParseTryStatement()
+    {
+        var tryKeyword = Expect(TokenKind.Try);
+        var block = ParseBlockStatement();
+        var catchClauses = ImmutableArray.CreateBuilder<CatchClauseNode>();
+
+        while (Current.Kind == TokenKind.Catch)
+            catchClauses.Add(ParseCatchClause());
+
+        var finallyClause = Current.Kind switch
+        {
+            TokenKind.Finally => OptionalSyntax.With(ParseFinallyClause()),
+            _ => OptionalSyntax<FinallyClauseNode>.None
+        };
+
+        return new TryStatementNode(
+            tryKeyword,
+            block,
+            catchClauses.ToImmutable(),
+            finallyClause);
+    }
+
+    private CatchClauseNode ParseCatchClause()
+    {
+        var catchKeyword = Expect(TokenKind.Catch);
+
+        OptionalSyntax<SyntaxToken> openParen;
+        OptionalSyntax<TypeSyntax> type;
+        OptionalSyntax<SyntaxToken> identifier;
+        OptionalSyntax<SyntaxToken> closeParen;
+
+        if (Current.Kind == TokenKind.OpenParen)
+        {
+            openParen = Expect(TokenKind.OpenParen);
+            type = ParseExpectedType();
+
+            identifier = Current.Kind switch
+            {
+                TokenKind.Identifier => OptionalSyntax.With(ExpectIdentifier()),
+                _ => OptionalSyntax<SyntaxToken>.None
+            };
+
+            closeParen = Expect(TokenKind.CloseParen);
+        }
+        else
+        {
+            openParen = OptionalSyntax<SyntaxToken>.None;
+            type = OptionalSyntax<TypeSyntax>.None;
+            identifier = OptionalSyntax<SyntaxToken>.None;
+            closeParen = OptionalSyntax<SyntaxToken>.None;
+        }
+
+        var block = ParseBlockStatement();
+
+        return new CatchClauseNode(catchKeyword, openParen, type, identifier, closeParen, block);
+    }
+
+    private FinallyClauseNode ParseFinallyClause()
+    {
+        var finallyKeyword = Expect(TokenKind.Finally);
+        var block = ParseBlockStatement();
+
+        return new FinallyClauseNode(finallyKeyword, block);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
