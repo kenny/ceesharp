@@ -1142,10 +1142,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private MemberDeclarationNode ParseEventFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers, SyntaxToken eventKeyword, TypeSyntax type)
     {
-        var variableDeclarators = ParseVariableDeclarators();
+        var declarators = ParseVariableDeclarators();
         var semicolon = Expect(TokenKind.Semicolon);
 
-        return new EventFieldDeclarationNode(attributes, modifiers, eventKeyword, type, variableDeclarators, semicolon);
+        return new EventFieldDeclarationNode(attributes, modifiers, eventKeyword, type, declarators, semicolon);
     }
     
 
@@ -1156,7 +1156,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         var constKeyword = OptionalSyntax.With(Expect(TokenKind.Const, "const"));
         var type = ParseExpectedType();
-        var variableDeclarators = ParseVariableDeclarators();
+        var declarators = ParseVariableDeclarators();
         var semicolon = Expect(TokenKind.Semicolon);
 
         return new FieldDeclarationNode(
@@ -1164,7 +1164,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             modifiers,
             constKeyword,
             type,
-            variableDeclarators,
+            declarators,
             semicolon);
     }
 
@@ -1174,7 +1174,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         ValidateModifiers<FieldDeclarationNode>(modifiers);
 
-        var variableDeclarators = ParseVariableDeclarators();
+        var declarators = ParseVariableDeclarators();
 
         var semicolon = Expect(TokenKind.Semicolon);
 
@@ -1183,7 +1183,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             modifiers,
             OptionalSyntax<SyntaxToken>.None,
             type,
-            variableDeclarators,
+            declarators,
             semicolon);
     }
 
@@ -1458,8 +1458,51 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         {
             TokenKind.OpenBrace => ParseBlockStatement(),
             TokenKind.If => ParseIfStatement(),
-            _ => ParseExpressionStatement()
+            _ => ParseExpressionOrDeclarationStatement()
         };
+    }
+
+    private StatementNode ParseExpressionOrDeclarationStatement()
+    {
+        switch (Current.Kind)
+        {
+            case TokenKind.Const:
+            case TokenKind.Identifier:
+            case var kind when kind.IsPredefinedType():
+                var constKeyword = Current.Kind switch
+                {
+                    TokenKind.Const =>
+                        OptionalSyntax.With(Expect(Current.Kind)),
+                    _ => OptionalSyntax<SyntaxToken>.None
+                };
+                
+                var restorePoint = tokenStream.CreateRestorePoint();
+                
+                var type = ParseType();
+                
+                if (constKeyword.HasValue || type != null && Current.Kind == TokenKind.Identifier)
+                    return ParseDeclarationStatement(constKeyword, type);
+                
+                tokenStream.Restore(restorePoint);
+                break;
+        }
+        
+        return ParseExpressionStatement();
+    }
+
+    private DeclarationStatementNode ParseDeclarationStatement(OptionalSyntax<SyntaxToken> constKeyword, TypeSyntax? type)
+    {
+        if (type == null)
+        {
+            diagnostics.ReportError(Current.Position, "Type expected");
+
+            isInErrorRecovery = true;
+        }
+        
+        var declarators = ParseVariableDeclarators();
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new DeclarationStatementNode(new VariableDeclarationNode(constKeyword, OptionalSyntax.With(type), declarators), semicolon);
     }
 
     private BlockStatementNode ParseBlockStatement()

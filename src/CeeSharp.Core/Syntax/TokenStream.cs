@@ -31,8 +31,23 @@ public class TokenStream(ImmutableArray<SyntaxToken> tokens)
         return index < tokens.Length ? tokens[index] : Current;
     }
 
+    public RestorePoint CreateRestorePoint()
+    {
+        return new RestorePoint(position);
+    }
+
+    public void Restore(RestorePoint restorePoint)
+    {
+        position = restorePoint.Position;
+    }
+
     private SyntaxToken EndOfFile()
     {
         return new SyntaxToken(TokenKind.EndOfFile, "", tokens.Any() ? tokens[^1].Position + 1 : 0);
+    }
+
+    public readonly struct RestorePoint(int position)
+    {
+        public int Position { get; } = position;
     }
 }

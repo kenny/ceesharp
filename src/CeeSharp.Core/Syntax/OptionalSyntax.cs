@@ -20,9 +20,9 @@ public readonly struct OptionalSyntax<TElement>(TElement? element)
 
 public static class OptionalSyntax
 {
-    public static OptionalSyntax<TElement> With<TElement>(TElement element)
+    public static OptionalSyntax<TElement> With<TElement>(TElement? element)
         where TElement : SyntaxElement
     {
-        return new OptionalSyntax<TElement>(element);
+        return element == null ? OptionalSyntax<TElement>.None : new OptionalSyntax<TElement>(element);
     }
 }
