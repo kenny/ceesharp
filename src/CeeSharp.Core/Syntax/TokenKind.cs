@@ -300,6 +300,8 @@ public static class TokenKindExtensions
                 or TokenKind.Minus
                 or TokenKind.Exclamation
                 or TokenKind.Tilde
+                or TokenKind.Asterisk
+                or TokenKind.Ampersand
                 or TokenKind.PlusPlus
                 or TokenKind.MinusMinus => true,
             _ => false
