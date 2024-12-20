@@ -1469,6 +1469,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseIfStatement();
             case TokenKind.For:
                 return ParseForStatement();
+            case TokenKind.Foreach:
+                return ParseForeachStatement();
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
@@ -1638,6 +1640,21 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new SeparatedSyntaxList<ExpressionNode>(
             expressions.ToImmutable(),
             separators.ToImmutable());
+    }
+
+    private ForeachStatementNode ParseForeachStatement()
+    {
+        var foreachKeyword = Expect(TokenKind.Foreach, "foreach");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var type = ParseExpectedType();
+        var identifier = ExpectIdentifier();
+        var inKeyword = Expect(TokenKind.In, "in");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement();
+
+        return new ForeachStatementNode(foreachKeyword, openParen, type, identifier, inKeyword, expression, closeParen,
+            statement);
     }
 
     private ExpressionNode ParseExpression()
