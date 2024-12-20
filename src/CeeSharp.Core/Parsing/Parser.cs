@@ -1499,9 +1499,9 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseReturnStatement();
             case TokenKind.Throw:
                 return ParseThrowStatement();
-            case TokenKind.Checked:
+            case TokenKind.Checked when Lookahead.Kind != TokenKind.OpenParen:
                 return ParseCheckedStatement();
-            case TokenKind.Unchecked:
+            case TokenKind.Unchecked when Lookahead.Kind != TokenKind.OpenParen:
                 return ParseUncheckedStatement();
             case TokenKind.Lock:
                 return ParseLockStatement();
@@ -2138,6 +2138,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 or TokenKind.CharacterLiteral => new LiteralExpressionNode(Expect(Current.Kind)),
             TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
             TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
+            TokenKind.Checked => ParseCheckedExpression(),
+            TokenKind.Unchecked => ParseUncheckedExpression(),
             TokenKind.OpenParen => ParseParenthesizedExpression(),
             TokenKind.Identifier => new IdentifierExpressionNode(ExpectIdentifier()),
             _ => null
@@ -2216,6 +2218,26 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         return new ParenthesizedExpressionNode(openParen, expression, closeParen);
+    }
+    
+    private CheckedExpressionNode ParseCheckedExpression()
+    {
+        var checkedKeyword = Expect(TokenKind.Checked, "checked");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return new CheckedExpressionNode(checkedKeyword, openParen, expression, closeParen);
+    }
+    
+    private UncheckedExpressionNode ParseUncheckedExpression()
+    {
+        var uncheckedKeyword = Expect(TokenKind.Unchecked, "unchecked");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var expression = ParseExpression();
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+
+        return new UncheckedExpressionNode(uncheckedKeyword, openParen, expression, closeParen);
     }
 
     private ParserContextScope PushContext(ParserContext parserContext)
