@@ -3,6 +3,9 @@ global using SyntaxNodeOrToken =
 global using BlockNodeOrToken =
     CeeSharp.Core.Syntax.SyntaxUnion<CeeSharp.Core.Syntax.Nodes.Statements.BlockStatementNode,
         CeeSharp.Core.Syntax.SyntaxToken>;
+global using VariableDeclarationOrInitializer =
+    CeeSharp.Core.Syntax.SyntaxUnion<CeeSharp.Core.Syntax.Nodes.VariableDeclarationNode, CeeSharp.Core.Syntax.Nodes.
+        SeparatedSyntaxList<CeeSharp.Core.Syntax.Nodes.Expressions.ExpressionNode>>;
 using System.Diagnostics.CodeAnalysis;
 
 namespace CeeSharp.Core.Syntax;

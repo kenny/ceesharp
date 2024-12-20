@@ -14,7 +14,7 @@ public sealed record OperatorDeclarationNode(
     SeparatedSyntaxList<ParameterNode> Parameters,
     SyntaxToken CloseParen,
     BlockNodeOrToken BlockOrSemicolon) : MemberDeclarationNode, IModifierValidator
-{ 
+{
     public static bool IsModifierValid(ParserContext parserContext, TokenKind modifier)
     {
         return modifier is TokenKind.Public

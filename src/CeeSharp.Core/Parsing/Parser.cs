@@ -581,13 +581,13 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             case TokenKind.Const:
                 return ParseConstantFieldDeclaration(attributes, modifiers);
-            
+
             case TokenKind.Event:
                 return ParseEventDeclaration(attributes, modifiers);
 
             case TokenKind.Tilde:
                 return ParseDestructorDeclaration(attributes, modifiers);
-            
+
             case TokenKind.Identifier when currentContext != ParserContext.Namespace:
                 if (Lookahead.Kind != TokenKind.OpenParen)
                 {
@@ -708,6 +708,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return null;
         }
     }
+
     private EnumDeclarationNode ParseEnumDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
@@ -721,18 +722,19 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
         var semicolon = ExpectOptional(TokenKind.Semicolon);
 
-        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, baseType, openBrace, members, closeBrace,
+        return new EnumDeclarationNode(attributes, modifiers, enumKeyword, identifier, baseType, openBrace, members,
+            closeBrace,
             semicolon);
     }
-    
+
     private OptionalSyntax<BaseTypeListNode> ParseEnumBaseType()
     {
         if (Current.Kind != TokenKind.Colon)
             return OptionalSyntax<BaseTypeListNode>.None;
-        
+
         var colon = Expect(TokenKind.Colon);
         var types = ImmutableArray.CreateBuilder<TypeSyntax>();
-        
+
         types.Add(ParseExpectedType());
         var baseTypes = new SeparatedSyntaxList<TypeSyntax>(
             types.ToImmutable(),
@@ -858,7 +860,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var declarations = ParseTypeDeclarations();
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
 
-        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, baseTypes, openBrace, declarations,
+        return new StructDeclarationNode(attributes, modifiers, structKeyword, identifier, baseTypes, openBrace,
+            declarations,
             closeBrace);
     }
 
@@ -1044,7 +1047,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             arguments,
             closeParen));
     }
-    
+
     private DestructorDeclarationNode ParseDestructorDeclaration(ImmutableArray<AttributeSectionNode> attributes,
         ImmutableArray<SyntaxToken> modifiers)
     {
@@ -1147,9 +1150,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new EventFieldDeclarationNode(attributes, modifiers, eventKeyword, type, declarators, semicolon);
     }
-    
 
-    private FieldDeclarationNode ParseConstantFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes, ImmutableArray<SyntaxToken> modifiers)
+
+    private FieldDeclarationNode ParseConstantFieldDeclaration(ImmutableArray<AttributeSectionNode> attributes,
+        ImmutableArray<SyntaxToken> modifiers)
     {
         using var _ = PushContext(ParserContext.Constant);
         ValidateModifiers<FieldDeclarationNode>(modifiers);
@@ -1368,7 +1372,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         TypeSyntax type, OptionalSyntax<ExplicitInterfaceNode> explicitInterface)
     {
         using var _ = PushContext(ParserContext.Indexer);
-        
+
         ValidateModifiers<IndexerDeclarationNode>(modifiers);
 
         var thisKeyword = Expect(TokenKind.This, "this");
@@ -1456,13 +1460,15 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         if (Current.Kind == TokenKind.Identifier && Lookahead.Kind == TokenKind.Colon)
             return ParseLabeledStatement();
-        
+
         switch (Current.Kind)
         {
             case TokenKind.OpenBrace:
                 return ParseBlockStatement();
             case TokenKind.If:
-                return ParseIfStatement();  
+                return ParseIfStatement();
+            case TokenKind.For:
+                return ParseForStatement();
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
@@ -1472,14 +1478,14 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                         OptionalSyntax.With(Expect(Current.Kind)),
                     _ => OptionalSyntax<SyntaxToken>.None
                 };
-                
+
                 var restorePoint = tokenStream.CreateRestorePoint();
-                
+
                 var type = ParseType();
-                
-                if (constKeyword.HasValue || type != null && Current.Kind == TokenKind.Identifier)
+
+                if (constKeyword.HasValue || (type != null && Current.Kind == TokenKind.Identifier))
                     return ParseDeclarationStatement(constKeyword, type);
-                
+
                 tokenStream.Restore(restorePoint);
                 goto default;
             default:
@@ -1496,7 +1502,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new LabeledStatementNode(identifier, colon, statement);
     }
 
-    private DeclarationStatementNode ParseDeclarationStatement(OptionalSyntax<SyntaxToken> constKeyword, TypeSyntax? type)
+    private DeclarationStatementNode ParseDeclarationStatement(OptionalSyntax<SyntaxToken> constKeyword,
+        TypeSyntax? type)
     {
         if (type == null)
         {
@@ -1504,11 +1511,12 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
             isInErrorRecovery = true;
         }
-        
+
         var declarators = ParseVariableDeclarators();
         var semicolon = Expect(TokenKind.Semicolon, ";");
 
-        return new DeclarationStatementNode(new VariableDeclarationNode(constKeyword, OptionalSyntax.With(type), declarators), semicolon);
+        return new DeclarationStatementNode(
+            new VariableDeclarationNode(constKeyword, OptionalSyntax.With(type), declarators), semicolon);
     }
 
     private BlockStatementNode ParseBlockStatement()
@@ -1564,6 +1572,72 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var statement = ParseStatement();
 
         return OptionalSyntax.With(new ElseClauseNode(elseKeyword, statement));
+    }
+
+    private ForStatementNode ParseForStatement()
+    {
+        var forKeyword = Expect(TokenKind.For, "for");
+        var openParen = Expect(TokenKind.OpenParen, "(");
+        var initializers = ParseForInitializers();
+        var firstSemicolon = Expect(TokenKind.Semicolon, ";");
+        var condition = Current.Kind != TokenKind.Semicolon
+            ? OptionalSyntax.With(ParseExpression())
+            : OptionalSyntax<ExpressionNode>.None;
+        var secondSemicolon = Expect(TokenKind.Semicolon, ";");
+        var iterator = Current.Kind != TokenKind.CloseParen
+            ? ParseStatementExpressionList()
+            : SeparatedSyntaxList<ExpressionNode>.Empty;
+        var closeParen = Expect(TokenKind.CloseParen, ")");
+        var statement = ParseStatement();
+
+        return new ForStatementNode(forKeyword, openParen, initializers, firstSemicolon, condition, secondSemicolon,
+            iterator, closeParen, statement);
+    }
+
+    private VariableDeclarationOrInitializer ParseForInitializers()
+    {
+        if (Current.Kind == TokenKind.Semicolon)
+            return SeparatedSyntaxList<ExpressionNode>.Empty;
+        
+        switch (Current.Kind)
+        {
+            case TokenKind.Identifier:
+            case var kind when kind.IsPredefinedType():
+                break;
+        }
+
+        var restorePoint = tokenStream.CreateRestorePoint();
+
+        var type = ParseType();
+
+        if (type != null && Current.Kind == TokenKind.Identifier)
+            return new VariableDeclarationNode(OptionalSyntax<SyntaxToken>.None, type, ParseVariableDeclarators());
+
+        tokenStream.Restore(restorePoint);
+
+        return ParseStatementExpressionList();
+    }
+
+    private SeparatedSyntaxList<ExpressionNode> ParseStatementExpressionList()
+    {
+        var expressions = ImmutableArray.CreateBuilder<ExpressionNode>();
+        var separators = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+        expressions.Add(ParseExpression());
+
+        while (Current.Kind == TokenKind.Comma)
+        {
+            separators.Add(Expect(TokenKind.Comma));
+
+            if (isInErrorRecovery)
+                Synchronize();
+
+            expressions.Add(ParseExpression());
+        }
+
+        return new SeparatedSyntaxList<ExpressionNode>(
+            expressions.ToImmutable(),
+            separators.ToImmutable());
     }
 
     private ExpressionNode ParseExpression()
