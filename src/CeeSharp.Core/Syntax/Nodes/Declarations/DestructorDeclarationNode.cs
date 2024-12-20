@@ -21,7 +21,7 @@ public sealed record DestructorDeclarationNode(
     {
         foreach (var child in Attributes)
             yield return child;
-        
+
         if (BlockOrSemicolon.IsLeft)
             yield return BlockOrSemicolon.LeftValue;
     }

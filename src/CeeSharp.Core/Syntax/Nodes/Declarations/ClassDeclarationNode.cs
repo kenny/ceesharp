@@ -34,7 +34,7 @@ public sealed record ClassDeclarationNode(
 
         if (BaseTypes.HasValue)
             yield return BaseTypes.Element;
-        
+
         foreach (var child in Declarations)
             yield return child;
     }

@@ -24,7 +24,7 @@ public sealed record InterfaceDeclarationNode(
             or TokenKind.Internal
             or TokenKind.Private;
     }
-    
+
     public override IEnumerable<SyntaxNode> GetChildren()
     {
         foreach (var child in Attributes)

@@ -16,7 +16,7 @@ public sealed record FieldDeclarationNode(
     {
         if (parserContext != ParserContext.Constant)
             return modifier is TokenKind.Static or TokenKind.ReadOnly or TokenKind.Volatile;
-        
+
         return modifier is TokenKind.New
             or TokenKind.Public
             or TokenKind.Protected

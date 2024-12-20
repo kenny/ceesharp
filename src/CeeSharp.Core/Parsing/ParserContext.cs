@@ -12,5 +12,5 @@ public enum ParserContext
     Indexer,
     Event,
     Constant,
-    Statement,
+    Statement
 }

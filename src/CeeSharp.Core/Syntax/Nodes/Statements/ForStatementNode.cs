@@ -1,5 +1,4 @@
 using CeeSharp.Core.Syntax.Nodes.Expressions;
-using CeeSharp.Core.Syntax.Types;
 
 namespace CeeSharp.Core.Syntax.Nodes.Statements;
 
@@ -18,14 +17,14 @@ public sealed record ForStatementNode(
     {
         if (Initializer.IsLeft)
             yield return Initializer.LeftValue;
-        
-        if(Initializer.IsRight)
+
+        if (Initializer.IsRight)
             foreach (var child in Initializer.RightValue.Elements)
                 yield return child;
 
         if (Condition.HasValue)
             yield return Condition.Element;
-        
+
         foreach (var child in Iterator.Elements)
             yield return child;
 

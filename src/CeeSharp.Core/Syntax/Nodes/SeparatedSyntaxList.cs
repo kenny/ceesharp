@@ -2,7 +2,9 @@ using System.Collections.Immutable;
 
 namespace CeeSharp.Core.Syntax.Nodes;
 
-public sealed record SeparatedSyntaxList<TElement>(ImmutableArray<TElement> Elements, ImmutableArray<SyntaxToken> Separators)
+public sealed record SeparatedSyntaxList<TElement>(
+    ImmutableArray<TElement> Elements,
+    ImmutableArray<SyntaxToken> Separators)
     : SyntaxElement
     where TElement : SyntaxElement
 {

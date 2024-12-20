@@ -32,7 +32,7 @@ public sealed record EnumDeclarationNode(
 
         if (BaseType.HasValue)
             yield return BaseType.Element;
-        
+
         foreach (var child in Members)
             yield return child;
     }
