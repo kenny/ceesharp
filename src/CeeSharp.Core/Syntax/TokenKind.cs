@@ -216,6 +216,7 @@ public static class TokenKindExtensions
                 or TokenKind.Bool
                 or TokenKind.Byte
                 or TokenKind.Sbyte
+                or TokenKind.Short
                 or TokenKind.Char
                 or TokenKind.Decimal
                 or TokenKind.Double
