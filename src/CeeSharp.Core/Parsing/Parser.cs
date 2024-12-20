@@ -641,7 +641,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 if (!Current.Kind.IsPredefinedType())
                     return HandleIncompleteMember(attributes, modifiers);
 
-                var predefinedType = ParsePredefinedType();
+                var predefinedType = ParseType();
 
                 if (Lookahead.Kind is TokenKind.Semicolon or TokenKind.Assign or TokenKind.Comma)
                     return ParseFieldDeclaration(attributes, modifiers, predefinedType!);
