@@ -1475,7 +1475,18 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseWhileStatement();
             case TokenKind.Do:
                 return ParseDoStatement();
-            
+            case TokenKind.Break:
+                return ParseBreakStatement();
+            case TokenKind.Continue:
+                return ParseContinueStatement();
+            case TokenKind.Goto:
+                return ParseGotoStatement();
+            case TokenKind.Return:
+                return ParseReturnStatement();
+            case TokenKind.Throw:
+                return ParseThrowStatement();
+
+
             case TokenKind.Const:
             case TokenKind.Identifier:
             case var kind when kind.IsPredefinedType():
@@ -1498,6 +1509,57 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             default:
                 return ParseExpressionStatement();
         }
+    }
+
+    private BreakStatementNode ParseBreakStatement()
+    {
+        var breakKeyword = Expect(TokenKind.Break, "break");
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new BreakStatementNode(breakKeyword, semicolon);
+    }
+
+    private ContinueStatementNode ParseContinueStatement()
+    {
+        var continueKeyword = Expect(TokenKind.Continue, "continue");
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new ContinueStatementNode(continueKeyword, semicolon);
+    }
+
+    private GotoStatementNode ParseGotoStatement()
+    {
+        var gotoKeyword = Expect(TokenKind.Goto, "goto");
+        var identifier = ExpectIdentifier();
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new GotoStatementNode(gotoKeyword, identifier, semicolon);
+    }
+
+    private ReturnStatementNode ParseReturnStatement()
+    {
+        var returnKeyword = Expect(TokenKind.Return, "return");
+        var expression = Current.Kind switch
+        {
+            TokenKind.Semicolon => OptionalSyntax<ExpressionNode>.None,
+            _ => ParseExpression()
+        };
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new ReturnStatementNode(returnKeyword, expression, semicolon);
+    }
+
+    private StatementNode ParseThrowStatement()
+    {
+        var throwKeyword = Expect(TokenKind.Throw, "throw");
+        var expression = Current.Kind switch
+        {
+            TokenKind.Semicolon => OptionalSyntax<ExpressionNode>.None,
+            _ => ParseExpression()
+        };
+        var semicolon = Expect(TokenKind.Semicolon, ";");
+
+        return new ThrowStatementNode(throwKeyword, expression, semicolon);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
@@ -1605,7 +1667,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         if (Current.Kind == TokenKind.Semicolon)
             return SeparatedSyntaxList<ExpressionNode>.Empty;
-        
+
         switch (Current.Kind)
         {
             case TokenKind.Identifier:
@@ -1661,7 +1723,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         return new ForeachStatementNode(foreachKeyword, openParen, type, identifier, inKeyword, expression, closeParen,
             statement);
     }
-    
+
     private WhileStatementNode ParseWhileStatement()
     {
         var whileKeyword = Expect(TokenKind.While, "while");
@@ -1672,7 +1734,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
         return new WhileStatementNode(whileKeyword, openParen, condition, closeParen, statement);
     }
-    
+
     private DoStatementNode ParseDoStatement()
     {
         var doKeyword = Expect(TokenKind.Do, "do");
