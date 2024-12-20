@@ -20,6 +20,7 @@ public sealed record MethodDeclarationNode(
         return modifier is TokenKind.Public
             or TokenKind.Private
             or TokenKind.Protected
+            or TokenKind.Internal
             or TokenKind.Static
             or TokenKind.Virtual
             or TokenKind.Override
