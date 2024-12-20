@@ -1522,6 +1522,10 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
                 return ParseUsingStatement();
             case TokenKind.Try:
                 return ParseTryStatement();
+            case TokenKind.Unsafe:
+                return ParseUnsafeStatement();
+            case TokenKind.Fixed:
+                return ParseFixedStatement();
 
             case TokenKind.Semicolon:
                 return new EmptyStatementNode(Expect(TokenKind.Semicolon, ";"));
@@ -1745,6 +1749,27 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var block = ParseBlockStatement();
 
         return new FinallyClauseNode(finallyKeyword, block);
+    }
+
+    private UnsafeStatementNode ParseUnsafeStatement()
+    {
+        var unsafeKeyword = Expect(TokenKind.Unsafe);
+        var block = ParseBlockStatement();
+
+        return new UnsafeStatementNode(unsafeKeyword, block);
+    }
+
+    private FixedStatementNode ParseFixedStatement()
+    {
+        var fixedKeyword = Expect(TokenKind.Fixed);
+        var openParen = Expect(TokenKind.OpenParen);
+        var type = ParseExpectedType();
+        var declaration =
+            new VariableDeclarationNode(OptionalSyntax<SyntaxToken>.None, type, ParseVariableDeclarators());
+        var closeParen = Expect(TokenKind.CloseParen);
+        var statement = ParseStatement();
+
+        return new FixedStatementNode(fixedKeyword, openParen, declaration, closeParen, statement);
     }
 
     private LabeledStatementNode ParseLabeledStatement()
