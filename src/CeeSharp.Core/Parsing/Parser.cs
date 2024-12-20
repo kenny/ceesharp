@@ -2190,6 +2190,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             TokenKind.This => new ThisExpressionNode(Expect(TokenKind.This)),
             TokenKind.Base => new BaseExpressionNode(Expect(TokenKind.Base)),
             TokenKind.New => ParseNewExpression(),
+            TokenKind.StackAlloc => ParseStackAllocExpression(),
             TokenKind.SizeOf => ParseSizeOfExpression(),
             TokenKind.TypeOf => ParseTypeOfExpression(),
             TokenKind.Checked => ParseCheckedExpression(),
@@ -2238,25 +2239,6 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     private ExpressionNode ParseNewExpression()
     {
         var newKeyword = Expect(TokenKind.New);
-
-        if (Current.Kind == TokenKind.StackAlloc)
-        {
-            var stackallocKeyword = Expect(TokenKind.StackAlloc);
-            var elementType = ParseNonArrayType();
-
-            var openBracket = Expect(TokenKind.OpenBracket);
-            var size = ParseExpression();
-            var closeBracket = Expect(TokenKind.CloseBracket);
-
-            return new StackAllocExpressionNode(
-                newKeyword,
-                stackallocKeyword,
-                elementType!,
-                openBracket,
-                size,
-                closeBracket);
-        }
-
         var type = ParseNonArrayType();
 
         if (type != null)
@@ -2455,6 +2437,23 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeParen = Expect(TokenKind.CloseParen, ")");
 
         return new ParenthesizedExpressionNode(openParen, expression, closeParen);
+    }
+
+    private StackAllocExpressionNode ParseStackAllocExpression()
+    {
+        var stackallocKeyword = Expect(TokenKind.StackAlloc);
+        var elementType = ParseNonArrayType();
+
+        var openBracket = Expect(TokenKind.OpenBracket);
+        var size = ParseExpression();
+        var closeBracket = Expect(TokenKind.CloseBracket);
+
+        return new StackAllocExpressionNode(
+            stackallocKeyword,
+            elementType!,
+            openBracket,
+            size,
+            closeBracket);
     }
 
     private SizeOfExpressionNode ParseSizeOfExpression()
