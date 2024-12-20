@@ -13,10 +13,10 @@ public sealed record UsingStatementNode(
     {
         if (Declaration.IsLeft)
             yield return Declaration.LeftValue;
-         
-        if(Declaration.IsRight)
+
+        if (Declaration.IsRight)
             yield return Declaration.RightValue;
-        
+
         yield return Statement;
     }
 }

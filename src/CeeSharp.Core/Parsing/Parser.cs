@@ -501,7 +501,8 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var closeBrace = Expect(TokenKind.CloseBrace, "}");
         var semicolon = ExpectOptional(TokenKind.Semicolon);
 
-        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace, semicolon);
+        return new NamespaceDeclarationNode(namespaceKeyword, name, openBrace, usings, declarations, closeBrace,
+            semicolon);
     }
 
     private ImmutableArray<SyntaxToken> ParseModifiers()
@@ -1524,7 +1525,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
 
                 if (constKeyword.HasValue || (type != null && Current.Kind == TokenKind.Identifier))
                     return ParseDeclarationStatement(constKeyword, type);
-                
+
                 tokenStream.Restore(restorePoint);
                 suppress.Restore();
 
@@ -1638,20 +1639,22 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         var openParen = Expect(TokenKind.OpenParen, "(");
 
         var restorePoint = tokenStream.CreateRestorePoint();
-        var suppress = diagnostics.Suppress();   
-        
+        var suppress = diagnostics.Suppress();
+
         var type = ParseType();
 
         SyntaxUnion<VariableDeclarationNode, ExpressionNode> declaration;
 
         if (type != null && Current.Kind == TokenKind.Identifier)
+        {
             declaration =
                 new VariableDeclarationNode(OptionalSyntax<SyntaxToken>.None, type, ParseVariableDeclarators());
+        }
         else
         {
             tokenStream.Restore(restorePoint);
             suppress.Restore();
-            
+
             declaration = ParseExpression();
         }
 
@@ -1906,7 +1909,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
         }
 
         var restorePoint = tokenStream.CreateRestorePoint();
-        var suppress = diagnostics.Suppress();   
+        var suppress = diagnostics.Suppress();
 
         var type = ParseType();
 
@@ -2117,12 +2120,11 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
     {
         if (!Current.Kind.IsUnaryOperator())
             return ParsePrimaryExpression();
-        
+
         var operatorToken = Expect(Current.Kind);
         var operand = ParseUnaryExpression();
-        
-        return new PrefixUnaryExpressionNode(operatorToken, operand);
 
+        return new PrefixUnaryExpressionNode(operatorToken, operand);
     }
 
     private ExpressionNode ParsePrimaryExpression()
