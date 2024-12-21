@@ -2287,6 +2287,7 @@ public sealed class Parser(Diagnostics diagnostics, TokenStream tokenStream)
             TokenKind.Unchecked => ParseUncheckedExpression(),
             TokenKind.OpenParen => ParseParenthesizedExpression(),
             TokenKind.Identifier => new IdentifierExpressionNode(ExpectIdentifier()),
+            var kind when kind.IsPredefinedType() => new PredefinedTypeExpression(ParsePredefinedType()!),
             _ => null
         };
 
